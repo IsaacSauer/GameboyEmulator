@@ -223,7 +223,7 @@ FINLINE void LR35902::SRL(uint8_t& toShift)
 #pragma endregion
 
 #pragma region Bits
-FINLINE void LR35902::BIT(const uint8_t bit, const uint8_t data)
+FINLINE void LR35902::BITop(const uint8_t bit, const uint8_t data)
 {
 	Register.zeroF = !((data >> bit) & 1);
 	Register.subtractF = 0;

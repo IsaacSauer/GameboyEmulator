@@ -5,6 +5,8 @@
 #include <thread>
 #include <condition_variable>
 #include <atomic>
+
+#include "opc_test\tester.h"
 class GameBoy;
 
 struct Registers final
@@ -625,7 +627,7 @@ private:
 	void LogRequiredOpcodes();
 	std::vector<unsigned int> m_RequiredOpcodes;
 #endif
-	
+
 	Registers Register{};
 	std::thread DrawThreads[10];
 	GameBoy& Gameboy;
@@ -657,7 +659,7 @@ private:
 	void ADC(uint8_t toAdd, bool addCarry = true);
 	void ADD16(bool addToHL, uint16_t toAdd);
 	void AND(uint8_t toAnd);
-	void BIT(const uint8_t bit, const uint8_t data);
+	void BITop(const uint8_t bit, const uint8_t data);
 	void CALL(uint16_t address, bool doCall = true);
 	void CCF();
 	void CP(uint8_t toCompare);
@@ -695,4 +697,91 @@ private:
 	void DAA();
 #pragma endregion
 	// ReSharper restore CppInconsistentNaming
+
+	size_t instruction_mem_size;
+	uint8_t* instruction_mem;
+	int num_mem_accesses;
+	struct mem_access mem_accesses[16];
+
+public:
+	/*
+	Called once at startup. Here you should perform any initialization needed by your CPU.
+	Additionally, the arguments passed in by the tester specify a memory area of instruction_mem_size bytes,
+	which should be mapped read-only at address 0 for your CPU (see below).
+
+	Called once during startup. The area of memory pointed to by
+	tester_instruction_mem will contain instructions the tester will inject, and
+	should be mapped read-only at addresses [0,tester_instruction_mem_size).
+	*/
+	void mycpu_init(size_t tester_instruction_mem_size,
+		uint8_t* tester_instruction_mem)
+	{
+		instruction_mem_size = tester_instruction_mem_size;
+		instruction_mem = tester_instruction_mem;
+
+		/* ... Initialize your CPU here ... */
+	}
+
+	/*
+	Reset your CPU to a specific state, as defined in the state struct (format can be found below).
+	This function is called in between each different instruction and set of inputs per instruction.
+	
+	Resets the CPU state (e.g., registers) to a given state state.
+	*/
+	void mycpu_set_state(state* state)
+	{
+		(void)state;
+
+		/* ... Load your CPU with state as described (e.g., registers) ... */
+	}
+
+	/*
+	Load the current state of your CPU into the state struct (as defined below).
+	This function is called after each test run for different instruction and input combinations.
+	
+	Query the current state of the CPU.
+	*/
+	void mycpu_get_state(state* state)
+	{
+		state->num_mem_accesses = num_mem_accesses;
+		memcpy(state->mem_accesses, mem_accesses, sizeof(mem_accesses));
+
+		/* ... Copy your current CPU state into the provided struct ... */
+	}
+
+	/*
+	Step a single instruction of your CPU, and return the number of cycles spent doing so.
+	This means machine cycles (running at a 4.19 MHz clock), so for instance the NOP instruction should return 4.
+	
+	Step a single instruction of the CPU. Returns the amount of cycles this took
+	(e.g., NOP should return 4).
+	*/
+	int mycpu_step(void)
+	{
+		int cycles = 0;
+
+		/* ... Execute a single instruction in your CPU ... */
+
+		return cycles;
+	}
+
+	/*
+	Example mock MMU implementation, mapping the tester's instruction memory
+	read-only at address 0, and logging all writes.
+	*/
+	uint8_t mymmu_read(uint16_t address)
+	{
+		if (address < instruction_mem_size)
+			return instruction_mem[address];
+		else
+			return 0xaa;
+	}
+
+	void mymmu_write(uint16_t address, uint8_t data)
+	{
+		struct mem_access* access = &mem_accesses[num_mem_accesses++];
+		access->type = MEM_ACCESS_WRITE;
+		access->addr = address;
+		access->val = data;
+	}
 };

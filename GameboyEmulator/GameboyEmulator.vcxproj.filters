@@ -30,6 +30,24 @@
     <ClInclude Include="EmulatorClean.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="opc_test\common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="opc_test\disassembler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="opc_test\inputstate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="opc_test\instructions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="opc_test\ref_cpu.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="opc_test\tester.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -45,6 +63,18 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="OpcodeDefinitions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="opc_test\disassembler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="opc_test\inputstate.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="opc_test\ref_cpu.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="opc_test\tester.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

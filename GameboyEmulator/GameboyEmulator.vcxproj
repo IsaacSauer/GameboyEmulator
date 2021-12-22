@@ -177,6 +177,12 @@
     <ClInclude Include="LR35902.h" />
     <ClInclude Include="Emulator.h" />
     <ClInclude Include="GameBoy.h" />
+    <ClInclude Include="opc_test\common.h" />
+    <ClInclude Include="opc_test\disassembler.h" />
+    <ClInclude Include="opc_test\inputstate.h" />
+    <ClInclude Include="opc_test\instructions.h" />
+    <ClInclude Include="opc_test\ref_cpu.h" />
+    <ClInclude Include="opc_test\tester.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
@@ -184,6 +190,18 @@
     <ClCompile Include="Emulator.cpp" />
     <ClCompile Include="GameBoy.cpp" />
     <ClCompile Include="OpcodeDefinitions.cpp" />
+    <ClCompile Include="opc_test\disassembler.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="opc_test\inputstate.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="opc_test\ref_cpu.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="opc_test\tester.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

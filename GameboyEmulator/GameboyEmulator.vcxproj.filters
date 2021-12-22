@@ -52,5 +52,8 @@
     <None Include="..\..\..\Tetris(JUE)(V1.1)[!].gb">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="..\Demo\PinballFantasies(USA,Europe).gb">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

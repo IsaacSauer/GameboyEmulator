@@ -195,6 +195,7 @@
     <None Include="..\..\..\Tetris(JUE)(V1.1)[!].gb">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </None>
+    <None Include="..\Demo\PinballFantasies(USA,Europe).gb" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

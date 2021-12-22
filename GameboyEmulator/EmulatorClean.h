@@ -31,7 +31,7 @@ namespace gbee
 		 * \brief Loads the game and resets the gameboy instance
 		 * \param gbFile The ROM file to be read
 		 */
-		void LoadGame( const std::string &gbFile );
+		void LoadGame( const std::string &gbFile ) const;
 		/**
 		 * \brief Starts the Gameboy instances
 		 */

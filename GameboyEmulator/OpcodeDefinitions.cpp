@@ -10,8 +10,8 @@ FINLINE void LR35902::ADC(uint8_t toAdd, bool addCarry)
 	if (addCarry && Register.carryF)
 		++toAdd;
 
-	Register.halfCarryF = (((Register.a & 0xf) + (toAdd & 0xf)) & 0x10);
-	Register.carryF = (uint16_t(Register.a + toAdd) > 0xFF);
+	Register.halfCarryF = (Register.a & 0xf) + (toAdd & 0xf) & 0x10;
+	Register.carryF = static_cast<uint16_t>(Register.a + toAdd) > 0xFF;
 
 	Register.a += toAdd;
 
@@ -26,24 +26,24 @@ FINLINE void LR35902::ADD16(bool addToHL, uint16_t toAdd)
 {
 	if (addToHL)
 	{
-		Register.halfCarryF = (((Register.hl() & 0xfff) + (toAdd & 0xfff)) & 0x1000); //h is always 3->4 in the high byte
-		Register.carryF = ((uint32_t(Register.hl()) + toAdd) > 0xFFFF);
+		Register.halfCarryF = (Register.hl() & 0xfff) + (toAdd & 0xfff) & 0x1000; //h is always 3->4 in the high byte
+		Register.carryF = static_cast<uint32_t>(Register.hl()) + toAdd > 0xFFFF;
 
 		Register.hl(Register.hl() + toAdd);
 	}
 	else
 	{
-		const int8_t toAddS{ int8_t(toAdd) };
+		const int8_t toAddS{ static_cast<int8_t>(toAdd) };
 		if (toAddS >= 0)
 		{ //Positive
-			Register.halfCarryF = (((Register.sp & 0xfff) + (toAdd & 0xfff)) & 0x1000); //h is always 3->4 in the high byte
-			Register.carryF = ((uint32_t(Register.sp) + toAdd) > 0xFFFF);
+			Register.halfCarryF = (Register.sp & 0xfff) + (toAdd & 0xfff) & 0x1000; //h is always 3->4 in the high byte
+			Register.carryF = static_cast<uint32_t>(Register.sp) + toAdd > 0xFFFF;
 		}
 		else
 		{ //Negative
-			Register.halfCarryF = (int16_t(Register.sp & 0xf) + (toAddS & 0xf)) <
+			Register.halfCarryF = static_cast<int16_t>(Register.sp & 0xf) + (toAddS & 0xf) <
 				0; // Check if subtracting the last 4 bits goes negative, indicating a borrow //Could also do ((Register.sp+toAddS)^toAddS^Register.sp)&0x10
-			Register.carryF = ((uint32_t(Register.sp) + toAddS) < 0); //If we go negative, it would cause an underflow on unsigned, setting the carry
+			Register.carryF = static_cast<uint32_t>(Register.sp) + toAddS < 0; //If we go negative, it would cause an underflow on unsigned, setting the carry
 		}
 		Register.sp += toAddS;
 		Register.zeroF = 0;
@@ -57,7 +57,7 @@ FINLINE void LR35902::SBC(uint8_t toSub, bool subCarry)
 		++toSub;
 
 	Register.halfCarryF = ((Register.a - toSub) ^ toSub ^ Register.a) & 0x10;
-	Register.carryF = (int8_t(Register.a) - toSub) < 0;
+	Register.carryF = (static_cast<int8_t>(Register.a) - toSub) < 0;
 	Register.zeroF = !Register.a;
 	Register.subtractF = 1;
 	Register.a -= toSub;
@@ -74,7 +74,7 @@ FINLINE void LR35902::INC(uint8_t& toInc)
 {
 	Register.subtractF = 0;
 	//Register.carryF; //Does not affect the carry flag! The INC/DEC opcode is often used to control loops; Loops are often used for multiple precision arithmetic so, to prevent having to push the carry state after every loop they just made the instruction ignore it! :D
-	Register.halfCarryF = uint8_t((toInc & 0xF) == 0xF);
+	Register.halfCarryF = static_cast<uint8_t>((toInc & 0xF) == 0xF);
 	Register.zeroF = !(++toInc);
 }
 
@@ -97,7 +97,7 @@ FINLINE void LR35902::DEC(uint8_t& toDec)
 	Register.subtractF = 1;
 	//Register.carryF; //Does not affect the carry flag! The INC/DEC opcode is often used to control loops; Loops are often used for multiple precision arithmetic so, to prevent having to push the carry state after every loop they just made the instruction ignore it! :D
 	Register.halfCarryF = !(toDec & 0xF);
-	Register.zeroF = !(--toDec);
+	Register.zeroF = !--toDec;
 }
 
 FINLINE void LR35902::DEC(uint16_t& toDec)
@@ -117,8 +117,8 @@ FINLINE void LR35902::CP(uint8_t toCompare)
 {
 	Register.subtractF = 1;
 	Register.zeroF = !(Register.a - toCompare);
-	Register.carryF = (Register.a < toCompare);
-	Register.halfCarryF = ((int16_t(Register.a & 0xF) - (toCompare & 0xF)) < 0);
+	Register.carryF = Register.a < toCompare;
+	Register.halfCarryF = static_cast<int16_t>(Register.a & 0xF) - (toCompare & 0xF) < 0;
 }
 
 //DecimalAdjustA, implementation heavily inspired by Richeson's paper
@@ -145,8 +145,8 @@ FINLINE void LR35902::DAA()
 	}
 
 	Register.halfCarryF = false;
-	Register.carryF = (newA > 0xFF);
-	Register.a = (uint8_t)newA;
+	Register.carryF = newA > 0xFF;
+	Register.a = static_cast<uint8_t>(newA);
 	Register.zeroF = !Register.a;
 }
 #pragma endregion
@@ -174,7 +174,7 @@ FINLINE void LR35902::PUSH(const uint16_t data) //little endian
 FINLINE void LR35902::POP(uint16_t& dest)
 {
 	dest = Gameboy.ReadMemory(Register.sp++);
-	dest |= (uint16_t(Gameboy.ReadMemory(Register.sp++)) << 8);
+	dest |= (static_cast<uint16_t>(Gameboy.ReadMemory(Register.sp++)) << 8);
 }
 #pragma endregion
 
@@ -183,10 +183,10 @@ FINLINE void LR35902::POP(uint16_t& dest)
 FINLINE void LR35902::RLC(uint8_t& toRotate)
 {
 	Register.f = 0;
-	const bool msb{ bool(toRotate & 0x80) };
+	const bool msb{ static_cast<bool>(toRotate & 0x80) };
 
 	toRotate <<= 1;
-	toRotate |= uint8_t(msb);
+	toRotate |= static_cast<uint8_t>(msb);
 	Register.carryF = msb;
 	Register.zeroF = !toRotate;
 }
@@ -194,9 +194,9 @@ FINLINE void LR35902::RLC(uint8_t& toRotate)
 //RotateRight
 FINLINE void LR35902::RR(uint8_t& toRotate)
 {
-	const bool lsb{ bool(toRotate & 0x1) };
+	const bool lsb{ static_cast<bool>(toRotate & 0x1) };
 	toRotate >>= 1;
-	toRotate |= (Register.carryF << 7);
+	toRotate |= Register.carryF << 7;
 
 	Register.f = 0;
 	Register.carryF = lsb;
@@ -237,14 +237,14 @@ FINLINE void LR35902::RES(const uint8_t bit, uint8_t& data)
 
 FINLINE void LR35902::SET(const uint8_t bit, uint8_t& data)
 {
-	data |= (1 << bit);
+	data |= 1 << bit;
 }
 #pragma endregion
 
 #pragma region Misc
 FINLINE void LR35902::SWAP(uint8_t& data)
 {
-	data = (data >> 4) | (data << 4);
+	data = data >> 4 | data << 4;
 	Register.f = 0;
 	Register.zeroF = !data;
 }

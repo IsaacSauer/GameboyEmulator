@@ -6,7 +6,7 @@
 
 gbee::Emulator::Emulator(const std::string& gbfile, const uint8_t instances) : InstanceCount{ instances }
 {
-	Instances = new GameBoy[instances];
+	Instances = new GameBoy[InstanceCount];
 	LoadGame(gbfile);
 }
 

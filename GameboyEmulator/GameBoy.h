@@ -44,15 +44,13 @@ public:
 	uint8_t ReadMemory(uint16_t pos);
 	uint16_t ReadMemoryWord(uint16_t& pos)
 	{
-		const uint16_t res{ uint16_t(uint16_t(ReadMemory(pos)) | uint16_t(ReadMemory(pos + 1)) << 8) };
+		const uint16_t res{ static_cast<uint16_t>(static_cast<uint16_t>(ReadMemory(pos)) | static_cast<uint16_t>(ReadMemory(pos + 1)) << 8) };
 		pos += 2;
 		return res;
-	};
+	}
 
 	uint8_t& GetIF() const noexcept { return IF; }
-	uint8_t GetIE() const noexcept {
-		return IE;
-	}
+	uint8_t GetIE() const noexcept { return IE; }
 	/**
 	 *\brief LCDControl
 	 *\note \code{.unparsed} Bit 7 - LCD Display Enable             (0=Off, 1=On)
@@ -87,11 +85,11 @@ public:
 	 */
 	std::bitset<(160 * 144) * 2>& GetFramebuffer() noexcept { return FrameBuffer; }
 	const std::bitset<(160 * 144) * 2>& GetFramebuffer() const noexcept { return FrameBuffer; }
-	uint8_t GetPixelColor(const uint16_t pixel) const { return ((FrameBuffer[pixel * 2] << 1) | uint8_t(FrameBuffer[pixel * 2 + 1])); }
+	uint8_t GetPixelColor(const uint16_t pixel) const { return FrameBuffer[pixel * 2] << 1 | static_cast<uint8_t>(FrameBuffer[pixel * 2 + 1]); }
 
 	void AddCycles(const unsigned cycles) { CurrentCycles += cycles; }
 	unsigned int GetCycles() const noexcept { return CurrentCycles; }
-	void RequestInterrupt(Interupts bit) const noexcept { IF |= (1 << bit); }
+	void RequestInterrupt(Interupts bit) const noexcept { IF |= 1 << bit; }
 	void SetKey(const Key key, const bool pressed);
 
 	void SetPaused(const bool isPaused) noexcept { IsPaused = isPaused; }
@@ -138,10 +136,10 @@ private:
 	 * \note Controls the TIMA (not DIV)
 	 * \note \code{.unparsed}Bit  2   - Timer Enable
 Bits 1-0 - Input Clock Select
-			00: CPU Clock / 1024 (DMG, CGB:   4096 Hz, SGB:   ~4194 Hz)
-			01: CPU Clock / 16   (DMG, CGB: 262144 Hz, SGB: ~268400 Hz)
-			10: CPU Clock / 64   (DMG, CGB:  65536 Hz, SGB:  ~67110 Hz)
-			11: CPU Clock / 256  (DMG, CGB:  16384 Hz, SGB:  ~16780 Hz)\endcode
+	00: CPU Clock / 1024 (DMG, CGB:   4096 Hz, SGB:   ~4194 Hz)
+	01: CPU Clock / 16   (DMG, CGB: 262144 Hz, SGB: ~268400 Hz)
+	10: CPU Clock / 64   (DMG, CGB:  65536 Hz, SGB:  ~67110 Hz)
+	11: CPU Clock / 256  (DMG, CGB:  16384 Hz, SGB:  ~16780 Hz)\endcode
 	 */
 	uint8_t& TACTimer{ (Memory[0xFF07]) };
 	uint8_t& IF{ (Memory[0xFF0F]) }; ///< Interrupt Flag
@@ -191,7 +189,7 @@ Bits 1-0 - Input Clock Select
 
 		uint8_t GetRomBank() const noexcept
 		{
-			return isRam ? romBank : (ramOrRomBank << 5 | romBank);
+			return isRam ? romBank : ramOrRomBank << 5 | romBank;
 		}
 
 		uint8_t GetRamBank() const noexcept
@@ -216,6 +214,6 @@ Bits 1-0 - Input Clock Select
 
 	constexpr bool InRange(const unsigned int value, const unsigned int min, const unsigned int max) const noexcept
 	{
-		return (value - min) <= (max - min);
+		return value - min <= max - min;
 	}
 };

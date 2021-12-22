@@ -4,6 +4,7 @@
 #include "imgui/imgui_sdl.h"
 #include "imgui/imgui_impl_sdl.h"
 #include "../GameboyEmulator/EmulatorClean.h"
+#include "nfd\include\FileDialog.h"
 
 /*
 	This is just a proof of concept, a quick example as to how you'd use the library
@@ -15,6 +16,7 @@ SDL_Window* wind{};
 SDL_Renderer* rendr{};
 SDL_Texture* textures[INSTANCECOUNT];
 gbee::Emulator emu{ "Tetris(JUE)(V1.1)[!].gb", INSTANCECOUNT };
+//gbee::Emulator emu{ "PinballFantasies(USA,Europe).gb", INSTANCECOUNT };
 
 void SetKeyState(const SDL_Event& event)
 {
@@ -68,13 +70,13 @@ bool SDLEventPump()
 
 void CraftPixelBuffer(const uint8_t instance, uint16_t* buffer)
 {
-	std::bitset<(160 * 144) * 2> bitBuffer{ emu.GetFrameBuffer(instance) };
+	std::bitset<160 * 144 * 2> bitBuffer{ emu.GetFrameBuffer(instance) };
 
 #pragma loop(hint_parallel(20))
-	for (int i{ 0 }; i < (160 * 144); ++i)
+	for (int i{ 0 }; i < 160 * 144; ++i)
 	{
-		const uint8_t val{ uint8_t((bitBuffer[i * 2] << 1) | uint8_t(bitBuffer[i * 2 + 1])) };
-		buffer[i] = (0xFFFF - (val * 0x5555));
+		const uint8_t val{ static_cast<uint8_t>(bitBuffer[i * 2] << 1 | static_cast<uint8_t>(bitBuffer[i * 2 + 1])) };
+		buffer[i] = 0xFFFF - val * 0x5555;
 	}
 }
 
@@ -96,23 +98,23 @@ void Update()
 		for (int i{ 0 }; i < INSTANCECOUNT; ++i)
 		{
 			const std::string name{ "Instance " };
-			CraftPixelBuffer(i, pixelBuffer);
-			SDL_UpdateTexture(textures[i], nullptr, (void*)pixelBuffer, 160 * sizeof(uint16_t));
-			speedModifiers[i] = emu.GetSpeed(i);
+			CraftPixelBuffer(static_cast<uint8_t>(i), pixelBuffer);
+			SDL_UpdateTexture(textures[i], nullptr, static_cast<void*>(pixelBuffer), 160 * sizeof(uint16_t));
+			speedModifiers[i] = emu.GetSpeed(static_cast<uint8_t>(i));
 
 			ImGui::Begin((name + std::to_string(i)).c_str(), nullptr, ImGuiWindowFlags_NoResize);
 			ImGui::SetWindowSize({ 300, 230 });
 			ImGui::Image(textures[i], { 160, 144 });
 			if (ImGui::Button("Toggle Paused"))
-				emu.SetPauseState(!emu.GetPauseState(i), i);
+				emu.SetPauseState(!emu.GetPauseState(static_cast<uint8_t>(i)), static_cast<uint8_t>(i));
 
 			if (ImGui::Checkbox("AutoSpeed", autoSpeed + i))
-				emu.SetAutoSpeed(autoSpeed[i], i);
+				emu.SetAutoSpeed(autoSpeed[i], static_cast<uint8_t>(i));
 			ImGui::SameLine();
 			ImGui::SliderInt("Speed", &speedModifiers[i], 1, 100);
 
 			ImGui::End();
-			emu.SetSpeed(speedModifiers[i], i);
+			emu.SetSpeed(static_cast<uint16_t>(speedModifiers[i]), static_cast<uint8_t>(i));
 		}
 		//ImGui::ShowMetricsWindow();
 
@@ -140,24 +142,31 @@ void Update()
 int main(int argc, char* argv[])
 {
 	SDL_Init(SDL_INIT_EVERYTHING);
-	emu.Start();
 
-	wind = SDL_CreateWindow("SDL2 ImGui Renderer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_RESIZABLE);
-	rendr = SDL_CreateRenderer(wind, -1, SDL_RENDERER_ACCELERATED);
-
-	for (int i{ 0 }; i < INSTANCECOUNT; ++i)
+	//Choose rom
+	std::string path{};
+	if (OpenFileDialog(path))
 	{
-		textures[i] = SDL_CreateTexture(rendr, SDL_PIXELFORMAT_RGBA4444, SDL_TEXTUREACCESS_STREAMING, 160, 144);
+		emu.LoadGame(path);
+		emu.Start();
 
-		SDL_SetRenderTarget(rendr, textures[i]);
-		SDL_SetRenderDrawColor(rendr, 255, 0, 255, 255);
-		SDL_RenderClear(rendr);
-		SDL_SetRenderTarget(rendr, nullptr);
+		wind = SDL_CreateWindow("SDL2 ImGui Renderer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_RESIZABLE);
+		rendr = SDL_CreateRenderer(wind, -1, SDL_RENDERER_ACCELERATED);
+
+		for (int i{ 0 }; i < INSTANCECOUNT; ++i)
+		{
+			textures[i] = SDL_CreateTexture(rendr, SDL_PIXELFORMAT_RGBA4444, SDL_TEXTUREACCESS_STREAMING, 160, 144);
+
+			SDL_SetRenderTarget(rendr, textures[i]);
+			SDL_SetRenderDrawColor(rendr, 255, 0, 255, 255);
+			SDL_RenderClear(rendr);
+			SDL_SetRenderTarget(rendr, nullptr);
+		}
+
+		ImGui::CreateContext();
+		ImGuiSDL::Initialize(rendr, 800, 600);
+
+		Update();
 	}
-
-	ImGui::CreateContext();
-	ImGuiSDL::Initialize(rendr, 800, 600);
-
-	Update();
 	return 0;
 }

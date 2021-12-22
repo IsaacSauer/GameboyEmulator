@@ -19,7 +19,7 @@ void GameBoy::LoadGame(const std::string& gbFile)
 	Rom.resize(size, 0);
 
 	file.seekg(0, std::ios::beg);
-	file.read((char*)Rom.data(), size);
+	file.read(reinterpret_cast<char*>(Rom.data()), size);
 
 	file.close();
 
@@ -61,16 +61,16 @@ void GameBoy::Update()
 		const clock_t currentTicks = { clock() / (CLOCKS_PER_SEC / 1000) };
 
 		//I'm keeping fps in mind to ensure a smooth simulation, if we make the cyclebudget infinite, we have 0 control
-		if (!IsPaused && lastValidTick + timeAdded < currentTicks)
+		if (!IsPaused && static_cast<float>(lastValidTick) + timeAdded < static_cast<float>(currentTicks))
 		{
-			if (AutoSpeed && currentTicks - (lastValidTick + timeAdded) >= .5f && SpeedMultiplier >= 2)
+			if (AutoSpeed && static_cast<float>(currentTicks) - (static_cast<float>(lastValidTick) + timeAdded) >= .5f && SpeedMultiplier >= 2)
 			{
 				--SpeedMultiplier;
 			}
 			CurrentCycles = 0;
 
 			//4194304 cycles can be done in a second (standard gameboy)
-			const unsigned int cycleBudget{ unsigned int(ceil(4194304.0f / fps)) * SpeedMultiplier };
+			const unsigned int cycleBudget{ static_cast<unsigned>(ceil(4194304.0f / fps)) * SpeedMultiplier };
 			while (!IsPaused && CurrentCycles < cycleBudget)
 			{
 				unsigned int stepCycles{ CurrentCycles };
@@ -78,19 +78,24 @@ void GameBoy::Update()
 				stepCycles = CurrentCycles - stepCycles;
 
 				//If we're cycle bound, subtract cycles and call pause if needed
-				if ((IsCycleFrameBound & 2) && (CyclesFramesToRun - stepCycles > CyclesFramesToRun || !(CyclesFramesToRun -= stepCycles)))
-					(IsCycleFrameBound = 0, IsPaused = true);
+				if (IsCycleFrameBound & 2 && (CyclesFramesToRun - stepCycles > CyclesFramesToRun || !(CyclesFramesToRun -= stepCycles)))
+				{
+					IsCycleFrameBound = 0;
+					IsPaused = true;
+				}
 
 				HandleTimers(stepCycles, cycleBudget);
 
 				//Draw if we don't care, are not frame bound or are on the final frame
 				Cpu.HandleGraphics(stepCycles, cycleBudget,
-					(!OnlyDrawLast || !(IsCycleFrameBound & 1) || (IsCycleFrameBound & 1 && CyclesFramesToRun == 1)
-						));
+					!OnlyDrawLast || !(IsCycleFrameBound & 1) || IsCycleFrameBound & 1 && CyclesFramesToRun == 1);
 
 				//If vblank interrupt and we're frame bound, subtract frames and call pause if needed
-				if ((IF & 1) && (IsCycleFrameBound & 1) && !(--CyclesFramesToRun))
-					(IsCycleFrameBound = 0, IsPaused = true);
+				if (IF & 1 && IsCycleFrameBound & 1 && !--CyclesFramesToRun)
+				{
+					IsCycleFrameBound = 0;
+					IsPaused = true;
+				}
 
 				Cpu.HandleInterupts();
 			}
@@ -99,7 +104,7 @@ void GameBoy::Update()
 		}
 		else if (!idle)
 		{
-			if (AutoSpeed && ((lastValidTick + timeAdded) - currentTicks) >= .5f)
+			if (AutoSpeed && static_cast<float>(lastValidTick) + timeAdded - static_cast<float>(currentTicks) >= .5f)
 			{
 				++SpeedMultiplier;
 			}
@@ -111,7 +116,7 @@ void GameBoy::Update()
 GameHeader GameBoy::ReadHeader()
 {
 	GameHeader header{};
-	memcpy(header.title, (void*)(Rom.data() + 0x134), 16);
+	memcpy(header.title, static_cast<void*>(Rom.data() + 0x134), 16);
 
 	//Set MBC chip version
 	switch (Rom[0x147])
@@ -177,41 +182,41 @@ void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 {
 	if (address <= 0x1FFF) //Enable/Disable RAM
 	{
-		if (Mbc <= mbc1 || (Mbc == mbc2 && !(address & 0x100)))
+		if (Mbc <= mbc1 || Mbc == mbc2 && !(address & 0x100))
 		{
-			RamBankEnabled = ((data & 0xF) == 0xA);
+			RamBankEnabled = (data & 0xF) == 0xA;
 		}
 	}
-	else if (InRange(address, (uint16_t)0x2000, (uint16_t)0x3FFF)) //5 bits;Lower 5 bits of ROM Bank
+	else if (InRange(address, static_cast<uint16_t>(0x2000), static_cast<uint16_t>(0x3FFF))) //5 bits;Lower 5 bits of ROM Bank
 	{
-		if (Mbc <= mbc1 || (Mbc == mbc2 && address & 0x100))
-			ActiveRomRamBank.romBank = ((data ? data : 1) & 0x1F);
+		if (Mbc <= mbc1 || Mbc == mbc2 && address & 0x100)
+			ActiveRomRamBank.romBank = (data ? data : 1) & 0x1F;
 	}
-	else if (InRange(address, (uint16_t)0x4000, (uint16_t)0x5FFF)) //2 bits;Ram or upper 2 bits of ROM bank
+	else if (InRange(address, static_cast<uint16_t>(0x4000), static_cast<uint16_t>(0x5FFF))) //2 bits;Ram or upper 2 bits of ROM bank
 	{
 		ActiveRomRamBank.ramOrRomBank = data;
 	}
-	else if (InRange(address, (uint16_t)0x6000, (uint16_t)0x7FFF)) //1 bit; Rom or Ram mode of ^
+	else if (InRange(address, static_cast<uint16_t>(0x6000), static_cast<uint16_t>(0x7FFF))) //1 bit; Rom or Ram mode of ^
 	{
 		ActiveRomRamBank.isRam = data;
 	}
-	else if (InRange(address, (uint16_t)0xA000, (uint16_t)0xBFFF)) //External RAM
+	else if (InRange(address, static_cast<uint16_t>(0xA000), static_cast<uint16_t>(0xBFFF))) //External RAM
 	{
 		if (RamBankEnabled)
 		{
-			RamBanks[(ActiveRomRamBank.GetRamBank() * 0x2000) + (address - 0xA000)] = data;
+			RamBanks[ActiveRomRamBank.GetRamBank() * 0x2000 + (address - 0xA000)] = data;
 		}
 	}
-	else if (InRange(address, (uint16_t)0xC000, (uint16_t)0xDFFF)) //Internal RAM
+	else if (InRange(address, static_cast<uint16_t>(0xC000), static_cast<uint16_t>(0xDFFF))) //Internal RAM
 	{
 		Memory[address] = data;
 	}
-	else if (InRange(address, (uint16_t)0xE000, (uint16_t)0xFDFF)) //ECHO RAM
+	else if (InRange(address, static_cast<uint16_t>(0xE000), static_cast<uint16_t>(0xFDFF))) //ECHO RAM
 	{
 		Memory[address] = data;
 		Memory[address - 0x2000] = data;
 	}
-	else if (InRange(address, (uint16_t)0xFEA0, (uint16_t)0xFEFF)) //Mysterious Restricted Range
+	else if (InRange(address, static_cast<uint16_t>(0xFEA0), static_cast<uint16_t>(0xFEFF))) //Mysterious Restricted Range
 	{
 	}
 	else if (address == 0xFF04) //Reset DIV
@@ -229,10 +234,10 @@ void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 	}
 	else if (address == 0xFF46)  //DMA transfer
 	{
-		const uint16_t src{ uint16_t(uint16_t(data) << 8) };
+		const uint16_t src{ static_cast<uint16_t>(static_cast<uint16_t>(data) << 8) };
 		for (int i{ 0 }; i < 0xA0; ++i)
 		{
-			WriteMemory(0xFE00 + i, ReadMemory(src + i));
+			WriteMemory(static_cast<uint16_t>(0xFE00 + i), ReadMemory(static_cast<uint16_t>(src + i)));
 		}
 	}
 	else
@@ -255,7 +260,7 @@ void GameBoy::SetKey(const Key key, const bool pressed)
 		JoyPadState &= ~(1 << key);
 
 		//Previosuly 1
-		if ((oldJoyPad & (1 << key)))
+		if (oldJoyPad & 1 << key)
 		{
 			if (!(Memory[0xff00] & 0x20) && !(key + 1 % 2)) //Button Keys
 				RequestInterrupt(joypad);
@@ -287,7 +292,7 @@ void GameBoy::HandleTimers(const unsigned stepCycles, const unsigned cycleBudget
 	{
 		TIMACycles += stepCycles;
 
-		unsigned int threshold;
+		unsigned int threshold{};
 		switch (TACTimer & 0x3)
 		{
 		case 0:
@@ -306,14 +311,14 @@ void GameBoy::HandleTimers(const unsigned stepCycles, const unsigned cycleBudget
 			assert(true);
 		}
 
-		while (TIMACycles >= threshold)
+		while (threshold != 0 && TIMACycles >= threshold)
 		{
 			if (!++TIMATimer)
 			{
 				TIMATimer = TMATimer;
 				IF |= 0x4;
 			}
-			TIMACycles -= threshold;
+			TIMACycles -= threshold; //threshold == 0??
 		}
 	}
 }
@@ -325,17 +330,17 @@ uint8_t GameBoy::GetJoypadState() const
 	//Button keys
 	if (!(res & 0x20))
 	{
-		res |= !!(JoyPadState & (1 << aButton));
-		res |= !!(JoyPadState & (1 << bButton)) << 1;
-		res |= !!(JoyPadState & (1 << select)) << 2;
-		res |= !!(JoyPadState & (1 << start)) << 3;
+		res |= !!(JoyPadState & 1 << aButton);
+		res |= !!(JoyPadState & 1 << bButton) << 1;
+		res |= !!(JoyPadState & 1 << select) << 2;
+		res |= !!(JoyPadState & 1 << start) << 3;
 	}
 	else if (!(res & 0x10))
 	{
-		res |= !!(JoyPadState & (1 << right));
-		res |= !!(JoyPadState & (1 << left)) << 1;
-		res |= !!(JoyPadState & (1 << up)) << 2;
-		res |= !!(JoyPadState & (1 << down)) << 3;
+		res |= !!(JoyPadState & 1 << right);
+		res |= !!(JoyPadState & 1 << left) << 1;
+		res |= !!(JoyPadState & 1 << up) << 2;
+		res |= !!(JoyPadState & 1 << down) << 3;
 	}
 	return res;
 }

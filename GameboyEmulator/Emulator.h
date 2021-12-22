@@ -38,6 +38,7 @@ namespace gbee
 	private:
 		GameBoy* Instances;
 		const uint8_t InstanceCount;
+		//std::string GbFile;
 
 		void Update(float fps) const;
 	};

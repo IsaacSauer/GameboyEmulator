@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "GameBoy.h"
 #include <fstream>
+#include <iostream>
 #include <time.h>
 
 GameBoy::GameBoy(const std::string& gameFile)
@@ -41,6 +42,7 @@ void GameBoy::LoadGame(const std::string& gbFile)
 		banksNeeded = 4;
 	}
 	RamBanks.resize(banksNeeded * 0x2000);
+	std::cout << "memory bank: " << std::to_string(Mbc) << std::endl;
 	Cpu.Reset();
 }
 

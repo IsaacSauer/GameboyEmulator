@@ -640,7 +640,7 @@ private:
 	bool InteruptsEnabled{ false }; ///< InteruptsMasterEnable
 	bool InteruptChangePending{ false }; ///< When an interupt change is requested, it gets pushed after the next opcode\note lsb==Disable, msb==Enable
 
-	void ExecuteOpcode(uint8_t opcode);
+	uint8_t ExecuteOpcode(uint8_t opcode);
 	void ConfigureLCDStatus();
 	void DrawLine() const;
 	void DrawBackground() const;
@@ -760,7 +760,7 @@ public:
 	{
 		int cycles = 0;
 
-		/* ... Execute a single instruction in your CPU ... */
+		cycles = ExecuteOpcode(0x0);
 
 		return cycles;
 	}

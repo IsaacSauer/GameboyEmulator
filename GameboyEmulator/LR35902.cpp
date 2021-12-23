@@ -211,7 +211,7 @@ void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, 
 	case H: OPCYCLE( funcName( Register.h __VA_ARGS__), cycles ); \
 	case L: OPCYCLE( funcName( Register.l __VA_ARGS__), cycles )
 
-void LR35902::ExecuteOpcode(uint8_t opcode)
+uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 {
 	assert(Gameboy.ReadMemory(Register.pc - 1) == opcode); //pc is pointing to first argument
 	uint8_t cycles{};

@@ -116,7 +116,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(ProjectDir)imgui\SDL2-2.0.10\lib\x64\SDL2.lib;$(ProjectDir)imgui\SDL2-2.0.10\lib\x64\SDL2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>"$(ProjectDir)imgui\SDL2-2.0.10\lib\x64\SDL2.lib";"$(ProjectDir)imgui\SDL2-2.0.10\lib\x64\SDL2main.lib";%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Program Files (x86)\Visual Leak Detector\lib\Win64;$(ProjectDir)imgui\SDL2-2.0.10\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>

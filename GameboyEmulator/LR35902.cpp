@@ -213,7 +213,7 @@ void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, 
 
 uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 {
-	assert(Gameboy.ReadMemory(Register.pc - 1) == opcode); //pc is pointing to first argument
+	//assert(Gameboy.ReadMemory(Register.pc - 1) == opcode); //pc is pointing to first argument
 	uint8_t cycles{};
 
 	switch (opcode)
@@ -1511,6 +1511,8 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 	}
 
 	Gameboy.AddCycles(cycles);
+
+	return cycles;
 }
 
 void LR35902::ConfigureLCDStatus()

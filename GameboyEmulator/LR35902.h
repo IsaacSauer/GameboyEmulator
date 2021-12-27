@@ -714,13 +714,7 @@ public:
 	should be mapped read-only at addresses [0,tester_instruction_mem_size).
 	*/
 	void mycpu_init(size_t tester_instruction_mem_size,
-		uint8_t* tester_instruction_mem)
-	{
-		instruction_mem_size = tester_instruction_mem_size;
-		instruction_mem = tester_instruction_mem;
-
-		/* ... Initialize your CPU here ... */
-	}
+		uint8_t* tester_instruction_mem);
 
 	/*
 	Reset your CPU to a specific state, as defined in the state struct (format can be found below).
@@ -728,12 +722,7 @@ public:
 	
 	Resets the CPU state (e.g., registers) to a given state state.
 	*/
-	void mycpu_set_state(state* state)
-	{
-		(void)state;
-
-		/* ... Load your CPU with state as described (e.g., registers) ... */
-	}
+	void mycpu_set_state(state* state);
 
 	/*
 	Load the current state of your CPU into the state struct (as defined below).
@@ -741,13 +730,7 @@ public:
 	
 	Query the current state of the CPU.
 	*/
-	void mycpu_get_state(state* state)
-	{
-		state->num_mem_accesses = num_mem_accesses;
-		memcpy(state->mem_accesses, mem_accesses, sizeof(mem_accesses));
-
-		/* ... Copy your current CPU state into the provided struct ... */
-	}
+	void mycpu_get_state(state* state);
 
 	/*
 	Step a single instruction of your CPU, and return the number of cycles spent doing so.
@@ -756,32 +739,13 @@ public:
 	Step a single instruction of the CPU. Returns the amount of cycles this took
 	(e.g., NOP should return 4).
 	*/
-	int mycpu_step(void)
-	{
-		int cycles = 0;
-
-		cycles = ExecuteOpcode(0x0);
-
-		return cycles;
-	}
+	int mycpu_step(void);
 
 	/*
 	Example mock MMU implementation, mapping the tester's instruction memory
 	read-only at address 0, and logging all writes.
 	*/
-	uint8_t mymmu_read(uint16_t address)
-	{
-		if (address < instruction_mem_size)
-			return instruction_mem[address];
-		else
-			return 0xaa;
-	}
+	uint8_t mymmu_read(uint16_t address);
 
-	void mymmu_write(uint16_t address, uint8_t data)
-	{
-		struct mem_access* access = &mem_accesses[num_mem_accesses++];
-		access->type = MEM_ACCESS_WRITE;
-		access->addr = address;
-		access->val = data;
-	}
+	void mymmu_write(uint16_t address, uint8_t data);
 };

@@ -1762,3 +1762,91 @@ void LR35902::ConfigureColorArray(uint8_t* const colorArray, uint8_t palette) co
 		ActivateDrawers.notify_all();
 	}
 }*/
+
+void LR35902::mycpu_init(size_t tester_instruction_mem_size, uint8_t* tester_instruction_mem)
+{
+	{
+		instruction_mem_size = tester_instruction_mem_size;
+		instruction_mem = tester_instruction_mem;
+
+		/* ... Initialize your CPU here ... */
+
+		std::cout << "Initializing the CPU ..." << std::endl;
+
+		Reset();
+	}
+}
+
+void LR35902::mycpu_set_state(state* state)
+{
+	/* ... Load your CPU with state as described (e.g., registers) ... */
+
+	num_mem_accesses = state->num_mem_accesses;
+	memcpy(mem_accesses, state->mem_accesses, sizeof(state->mem_accesses));
+
+	std::cout << "Setting state of the cpu ..." << std::endl;
+
+	Register.af(state->reg16.AF);
+	Register.bc(state->reg16.BC);
+	Register.de(state->reg16.DE);
+	Register.hl(state->reg16.HL);
+
+	Register.sp = state->SP;
+	Register.pc = state->PC;
+
+	InteruptsEnabled = state->interrupts_master_enabled;
+
+	Gameboy.SetPaused(state->halted);
+}
+
+void LR35902::mycpu_get_state(state* state)
+{
+	state->num_mem_accesses = num_mem_accesses;
+	memcpy(state->mem_accesses, mem_accesses, sizeof(mem_accesses));
+
+	/* ... Copy your current CPU state into the provided struct ... */
+
+	std::cout << "Getting the current state of the CPU ..." << std::endl;
+
+	state->reg8.A = Register.a;
+	state->reg8.F = Register.f;
+	state->reg8.B = Register.b;
+	state->reg8.C = Register.c;
+	state->reg8.D = Register.d;
+	state->reg8.E = Register.e;
+	state->reg8.H = Register.h;
+	state->reg8.L = Register.l;
+
+	state->SP = Register.sp;
+	state->PC = Register.pc;
+
+	state->interrupts_master_enabled = InteruptsEnabled;
+
+	state->halted = Gameboy.GetPaused();
+}
+
+int LR35902::mycpu_step()
+{
+	std::cout << "executing an opcode" << std::endl;
+	
+	int cycles = 0;
+
+	cycles = ExecuteOpcode(0x0);
+
+	return cycles;
+}
+
+uint8_t LR35902::mymmu_read(uint16_t address)
+{
+	if (address < instruction_mem_size)
+		return instruction_mem[address];
+	return 0xaa;
+}
+
+void LR35902::mymmu_write(uint16_t address, uint8_t data)
+{
+	struct mem_access* access = &mem_accesses[num_mem_accesses++];
+	access->type = MEM_ACCESS_WRITE;
+	access->addr = address;
+	access->val = data;
+}

@@ -31,7 +31,7 @@ LR35902::LR35902(GameBoy& gameboy) : Gameboy{ gameboy }
 	myops.init = std::bind(&LR35902::mycpu_init, this, _1, _2);
 	myops.set_state = std::bind(&LR35902::mycpu_set_state, this, _1);;
 	myops.get_state = std::bind(&LR35902::mycpu_get_state, this, _1);;
-	myops.step = std::bind(&LR35902::mycpu_step, this);
+	myops.step = std::bind(&LR35902::mycpu_step, this, _1);
 
 
 	tester_run(&flags, &myops);
@@ -1512,6 +1512,8 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 
 	Gameboy.AddCycles(cycles);
 
+	std::cout << "cycles this opcode took: " << std::to_string(cycles) << std::endl;
+
 	return cycles;
 }
 
@@ -1825,13 +1827,13 @@ void LR35902::mycpu_get_state(state* state)
 	state->halted = Gameboy.GetPaused();
 }
 
-int LR35902::mycpu_step()
+int LR35902::mycpu_step(uint8_t opCode)
 {
 	std::cout << "executing an opcode" << std::endl;
 	
 	int cycles = 0;
 
-	cycles = ExecuteOpcode(0x0);
+	cycles = ExecuteOpcode(opCode);
 
 	return cycles;
 }

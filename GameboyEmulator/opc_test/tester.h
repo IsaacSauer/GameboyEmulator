@@ -19,7 +19,7 @@ struct tester_operations {
     std::function<void(size_t instruction_mem_size, uint8_t* instruction_mem)> init;
     std::function<void(state* state)> set_state;
     std::function<void(state* state)> get_state;
-    std::function<void()> step;
+    std::function<int(uint8_t opCode)> step;
 
     //void (*init)(size_t instruction_mem_size, uint8_t *instruction_mem);
     //void (*set_state)(struct state *state);

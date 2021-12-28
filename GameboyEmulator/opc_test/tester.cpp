@@ -122,14 +122,14 @@ static void op_state_reset(struct op_state *op_state)
 }
 
 
-static int run_state(struct state *state)
+static int run_state(struct state *state, uint8_t opCode)
 {
     struct state tcpu_out_state, rcpu_out_state;
 
     tcpu_ops->set_state(state);
     rcpu_reset(state);
 
-    tcpu_ops->step();
+    tcpu_ops->step(opCode);
     rcpu_step();
 
     tcpu_ops->get_state(&tcpu_out_state);
@@ -210,7 +210,7 @@ static int test_instruction(struct test_inst *inst)
             disassemble(instruction_mem);
         }
 
-        last_op_had_failure = run_state(&state);
+        last_op_had_failure = run_state(&state, last_op);
 
         last_op = opcode;
         op_success_table[opcode] = !last_op_had_failure;

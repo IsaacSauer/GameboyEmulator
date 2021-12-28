@@ -221,6 +221,7 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 		{
 		case 0x0: //Only advances the program counter by 1. Performs no other operations that would have an effect.
 			cycles = 4;
+			//Register.pc = 0x001;
 			break;
 	
 	#pragma region ALU
@@ -513,12 +514,18 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 			Register.de(temp);
 			break;
 		}
+		/*
+		Load the 2 bytes of immediate data into register pair BC.
+
+		The first byte of immediate data is the lower byte (i.e., bits 0-7),
+		and the second byte of immediate data is the higher byte (i.e., bits 8-15).
+		*/
 		case 0x01:
 		{
 			uint16_t temp{ Register.bc() };
 			LD(&temp, Gameboy.ReadMemoryWord(Register.pc));
-			cycles = 12;
 			Register.bc(temp);
+			cycles = 12;
 			break;
 		}
 		case 0x21:

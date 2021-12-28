@@ -148,15 +148,15 @@ static int run_state(struct state *state, uint8_t opCode)
         return 1;
     }
 
-    printf("\n  === STATE MATCH ===\n");
-    printf("\n - Instruction -\n");
-    disassemble(instruction_mem);
-    printf("\n - Input state -\n");
-    dump_state(state);
-    printf("\n - Test-CPU output state -\n");
-    dump_state(&tcpu_out_state);
-    printf("\n - Correct output state -\n");
-    dump_state(&rcpu_out_state);
+    //printf("\n  === STATE MATCH ===\n");
+    //printf("\n - Instruction -\n");
+    //disassemble(instruction_mem);
+    //printf("\n - Input state -\n");
+    //dump_state(state);
+    //printf("\n - Test-CPU output state -\n");
+    //dump_state(&tcpu_out_state);
+    //printf("\n - Correct output state -\n");
+    //dump_state(&rcpu_out_state);
 
     return 0;
 }

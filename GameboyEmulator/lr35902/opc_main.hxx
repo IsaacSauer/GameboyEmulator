@@ -219,8 +219,8 @@ case 0x08: /*      LD (n16),SP */
 	auto read = mem_read_word(m_PC);
 	mem_write_word(read, m_SP);
 	m_PC += 2;
-	break;
 }
+break;
 
 case 0x09: /*      ADD HL,BC */
 	ADD_HL_RR((m_B << 8) | m_C)
@@ -1374,8 +1374,8 @@ case 0xEA: /*      LD (n16),A */
 	auto read = mem_read_word(m_PC);
 	mem_write_byte(read, m_A);
 	m_PC += 2;
-	break;
 }
+break;
 case 0xEE: /*      XOR A,n8 */
 
 	x = mem_read_byte(m_PC++);
@@ -1469,8 +1469,8 @@ case 0xFA: /*      LD A,(n16) */
 	auto read = mem_read_word(m_PC);
 	m_A = mem_read_byte(read);
 	m_PC += 2;
-	break;
 }
+break;
 case 0xFB: /*      EI */
 	OPCYCLE(EI(), 4);
 	//m_enable |= IME;

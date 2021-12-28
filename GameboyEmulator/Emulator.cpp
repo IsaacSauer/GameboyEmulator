@@ -7,7 +7,6 @@
 gbee::Emulator::Emulator(const std::string& gbfile, const uint8_t instances) : InstanceCount{ instances }
 {
 	Instances = new GameBoy[InstanceCount];
-	LoadGame(gbfile);
 }
 
 gbee::Emulator::~Emulator()
@@ -19,10 +18,13 @@ gbee::Emulator::~Emulator()
 	delete[] Instances;
 }
 
-void gbee::Emulator::LoadGame(const std::string& gbFile) const
+void gbee::Emulator::LoadGame(const std::string& gbFile, bool testCPU) const
 {
 	for (uint8_t i{ 0 }; i < InstanceCount; ++i)
 	{
+		if(testCPU)
+			Instances[i].TestCPU();
+
 		Instances[i].LoadGame(gbFile);
 		Instances[i].SetRunningVariable(true);
 	}

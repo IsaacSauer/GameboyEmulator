@@ -86,6 +86,8 @@ public:
 	void Reset(const bool skipBoot = true);
 	void ExecuteNextOpcode();
 
+	void TestCPU();
+
 	/**
 	 * \note A Rudementary interupt handler
 	 */
@@ -723,7 +725,7 @@ public:
 	Resets the CPU state (e.g., registers) to a given state state.
 	*/
 	void mycpu_set_state(state* state);
-
+	 
 	/*
 	Load the current state of your CPU into the state struct (as defined below).
 	This function is called after each test run for different instruction and input combinations.
@@ -748,4 +750,24 @@ public:
 	uint8_t mymmu_read(uint16_t address);
 
 	void mymmu_write(uint16_t address, uint8_t data);
+
+	void mmu_write(u16 addr, u8 val)
+	{
+		struct mem_access* access = &mem_accesses[num_mem_accesses++];
+		access->type = MEM_ACCESS_WRITE;
+		access->addr = addr;
+		access->val = val;
+	}
+	u8 mmu_read(u16 addr)
+	{
+		u8 ret;
+
+		if (addr < instruction_mem_size)
+			ret = instruction_mem[addr];
+		else
+			ret = 0xaa;
+
+
+		return ret;
+	}
 };

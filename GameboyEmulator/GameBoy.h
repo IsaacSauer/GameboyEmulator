@@ -31,6 +31,9 @@ public:
 	void SetRunningVariable(bool isRunning) { IsRunning = isRunning; }
 	GameHeader ReadHeader();
 
+	void InitROM();
+	void TestCPU();
+
 	/**
 	 * \brief Provides access to the raw memory array
 	 * \return The Memory array (does not include rom(banks) or ram)
@@ -42,12 +45,7 @@ public:
 	void WriteMemoryWord(const uint16_t pos, const uint16_t value);
 
 	uint8_t ReadMemory(uint16_t pos);
-	uint16_t ReadMemoryWord(uint16_t& pos)
-	{
-		const uint16_t res{ static_cast<uint16_t>(static_cast<uint16_t>(ReadMemory(pos)) | static_cast<uint16_t>(ReadMemory(pos + 1)) << 8) };
-		pos += 2;
-		return res;
-	}
+	uint16_t ReadMemoryWord(uint16_t& pos);
 
 	uint8_t& GetIF() const noexcept { return IF; }
 	uint8_t GetIE() const noexcept { return IE; }
@@ -118,6 +116,7 @@ public:
 	void SetOnlyDrawLastFrame(const bool state) noexcept { OnlyDrawLast = state; }
 
 private:
+	bool m_TestingOpcodes = false;
 	std::vector<uint8_t> RamBanks{};
 	LR35902 Cpu{ *this };
 

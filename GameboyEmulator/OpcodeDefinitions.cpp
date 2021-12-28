@@ -5,6 +5,7 @@
 
 #pragma region ALU
 //Add Carry
+//Add the contents of register A and the x flag to the contents of register x, and store the results in register A.
 FINLINE void LR35902::ADC(uint8_t toAdd, bool addCarry)
 {
 	if (addCarry && Register.carryF)

@@ -160,8 +160,23 @@ GameHeader GameBoy::ReadHeader()
 	return header;
 }
 
+void GameBoy::InitROM()
+{
+	Rom.resize(0xFFFF, 0);
+}
+
+void GameBoy::TestCPU()
+{
+	m_TestingOpcodes = true;
+	Cpu.TestCPU();
+	m_TestingOpcodes = false;
+}
+
 uint8_t GameBoy::ReadMemory(const uint16_t pos)
 {
+	if (m_TestingOpcodes)
+		return Cpu.mmu_read(pos);
+
 	if (pos <= 0x3FFF) //ROM Bank 0
 	{
 		return Rom[pos];
@@ -180,8 +195,25 @@ uint8_t GameBoy::ReadMemory(const uint16_t pos)
 	return Memory[pos];
 }
 
+uint16_t GameBoy::ReadMemoryWord(uint16_t& pos)
+{
+	if (m_TestingOpcodes)
+	{
+		const uint16_t res{ static_cast<uint16_t>(static_cast<uint16_t>(Cpu.mmu_read(pos)) | static_cast<uint16_t>(Cpu.mmu_read(pos + 1)) << 8) };
+		pos += 2;
+		return res;
+	}
+
+	const uint16_t res{ static_cast<uint16_t>(static_cast<uint16_t>(ReadMemory(pos)) | static_cast<uint16_t>(ReadMemory(pos + 1)) << 8) };
+	pos += 2;
+	return res;
+}
+
 void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 {
+	if (m_TestingOpcodes)
+		Cpu.mmu_write(address, data);
+
 	if (address <= 0x1FFF) //Enable/Disable RAM
 	{
 		if (Mbc <= mbc1 || Mbc == mbc2 && !(address & 0x100))
@@ -250,6 +282,12 @@ void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 
 void GameBoy::WriteMemoryWord(const uint16_t pos, const uint16_t value)
 {
+	if (m_TestingOpcodes)
+	{
+		Cpu.mmu_write(pos, value & 0xFF);
+		Cpu.mmu_write(pos + 1, value >> 8);
+	}
+
 	WriteMemory(pos, value & 0xFF);
 	WriteMemory(pos + 1, value >> 8);
 }

@@ -19,24 +19,6 @@ LR35902::LR35902(GameBoy& gameboy) : Gameboy{ gameboy }
 		DrawThreads[i] = std::thread{&LR35902::ThreadWork, this, i, &DrawDataStruct};
 	}*/
 
-
-	tester_flags flags{};
-	flags.keep_going_on_mismatch = 1;
-	flags.enable_cb_instruction_testing = 1;
-	flags.print_tested_instruction = 1;
-	flags.print_verbose_inputs = 1;
-
-	using namespace std::placeholders;
-	tester_operations myops{};
-	myops.init = std::bind(&LR35902::mycpu_init, this, _1, _2);
-	myops.set_state = std::bind(&LR35902::mycpu_set_state, this, _1);;
-	myops.get_state = std::bind(&LR35902::mycpu_get_state, this, _1);;
-	myops.step = std::bind(&LR35902::mycpu_step, this, _1);
-
-
-	tester_run(&flags, &myops);
-
-	std::cout << "Test Finished!\n";
 #ifdef _DEBUG
 	m_RequiredOpcodes = std::vector<unsigned int>(0xff + 1);
 #endif // _DEBUG
@@ -131,6 +113,25 @@ void LR35902::ExecuteNextOpcode()
 	}
 }
 
+void LR35902::TestCPU()
+{
+	tester_flags flags{};
+	flags.keep_going_on_mismatch = 1;
+	flags.enable_cb_instruction_testing = 1;
+	flags.print_tested_instruction = 1;
+	flags.print_verbose_inputs = 1;
+
+	using namespace std::placeholders;
+	tester_operations myops{};
+	myops.init = std::bind(&LR35902::mycpu_init, this, _1, _2);
+	myops.set_state = std::bind(&LR35902::mycpu_set_state, this, _1);;
+	myops.get_state = std::bind(&LR35902::mycpu_get_state, this, _1);;
+	myops.step = std::bind(&LR35902::mycpu_step, this, _1);
+
+	tester_run(&flags, &myops);
+	std::cout << "Test Finished!\n";
+}
+
 void LR35902::LogRequiredOpcodes()
 {
 }
@@ -216,1303 +217,1312 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 	//assert(Gameboy.ReadMemory(Register.pc - 1) == opcode); //pc is pointing to first argument
 	uint8_t cycles{};
 
-	switch (opcode)
-	{
-	case 0x0: //Only advances the program counter by 1. Performs no other operations that would have an effect.
-		cycles = 4;
-		break;
-
-#pragma region ALU
-		/*
-		- 0x8F: Add the contents of register A and the CY flag to the contents of register A, and store the results in register A.
-		- 0x88: Add the contents of register B and the CY flag to the contents of register A, and store the results in register A.
-		- 0x89: Add the contents of register C and the CY flag to the contents of register A, and store the results in register A.
-		- 0x8A: Add the contents of register D and the CY flag to the contents of register A, and store the results in register A.
-		- 0x8B: Add the contents of register E and the CY flag to the contents of register A, and store the results in register A.
-		- 0x8C: Add the contents of register H and the CY flag to the contents of register A, and store the results in register A.
-		- 0x8D: Add the contents of register L and the CY flag to the contents of register A, and store the results in register A.
-		*/
-		BASICOPS(0x8F, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 4, ADC, , true);
-	case 0x8E: //Add the contents of memory specified by register pair HL and the CY flag to the contents of register A, and store the results in register A.
-		OPCYCLE(ADC(Gameboy.ReadMemory(Register.hl()), true), 8);
-	case 0xCE: //Add the contents of the 8-bit immediate operand d8 and the CY flag to the contents of register A, and store the results in register A.
-		OPCYCLE(ADC(Gameboy.ReadMemory(Register.pc++), true), 8);
-
-	case 0x80: //Add the contents of register B to the contents of register A, and store the results in register A.
-		OPCYCLE(ADD(Register.b), 4);
-	case 0x81: //Add the contents of register C to the contents of register A, and store the results in register A.
-		OPCYCLE(ADD(Register.c), 4);
-	case 0x82: //Add the contents of register D to the contents of register A, and store the results in register A.
-		OPCYCLE(ADD(Register.d), 4);
-	case 0x83: //Add the contents of register E to the contents of register A, and store the results in register A.
-		OPCYCLE(ADD(Register.e), 4);
-	case 0x84: //Add the contents of register H to the contents of register A, and store the results in register A.
-		OPCYCLE(ADD(Register.h), 4);
-	case 0x85: //Add the contents of register L to the contents of register A, and store the results in register A.
-		OPCYCLE(ADD(Register.l), 4);
-	case 0x87: //Add the contents of register A to the contents of register A, and store the results in register A.
-		OPCYCLE(ADD(Register.a), 4);
-	case 0x86: //Add the contents of memory specified by register pair HL to the contents of register A, and store the results in register A.
-		OPCYCLE(ADD(Gameboy.ReadMemory(Register.hl())), 8);
-	case 0xC6: //Add the contents of the 8-bit immediate operand d8 to the contents of register A, and store the results in register A.
-		OPCYCLE(ADD(Gameboy.ReadMemory(Register.pc++)), 8);
-	case 0xE8: //Add the contents of the 8-bit signed (2's complement) immediate operand s8 and the stack pointer SP and store the results in SP.
-		OPCYCLE(ADD16(false, Gameboy.ReadMemory(Register.pc++)), 16); //Might have to add this value to the pc
-	case 0x09: //Add the contents of register pair BC to the contents of register pair HL, and store the results in register pair HL.
-		OPCYCLE(ADD16(true, Register.bc()), 8);
-	case 0x19: //Add the contents of register pair DE to the contents of register pair HL, and store the results in register pair HL.
-		OPCYCLE(ADD16(true, Register.de()), 8);
-	case 0x29: //Add the contents of register pair HL to the contents of register pair HL, and store the results in register pair HL.
-		OPCYCLE(ADD16(true, Register.hl()), 8);
-	case 0x39: //Add the contents of register pair SP to the contents of register pair HL, and store the results in register pair HL.
-		OPCYCLE(ADD16(true, Register.sp), 8);
-
-	case 0xA0: //Take the logical AND for each bit of the contents of register B and the contents of register A, and store the results in register A.
-		OPCYCLE(AND(Register.b), 4);
-	case 0xA1: //Take the logical AND for each bit of the contents of register C and the contents of register A, and store the results in register A.
-		OPCYCLE(AND(Register.c), 4);
-	case 0xA2: //Take the logical AND for each bit of the contents of register D and the contents of register A, and store the results in register A.
-		OPCYCLE(AND(Register.d), 4);
-	case 0xA3: //Take the logical AND for each bit of the contents of register E and the contents of register A, and store the results in register A.
-		OPCYCLE(AND(Register.e), 4);
-	case 0xA4: //Take the logical AND for each bit of the contents of register H and the contents of register A, and store the results in register A.
-		OPCYCLE(AND(Register.h), 4);
-	case 0xA5: //Take the logical AND for each bit of the contents of register L and the contents of register A, and store the results in register A.
-		OPCYCLE(AND(Register.l), 4);
-	case 0xA6: //Take the logical AND for each bit of the contents of memory specified by register pair HL and the contents of register A, and store the results in register A.
-		OPCYCLE(AND(Gameboy.ReadMemory(Register.hl())), 8);
-	case 0xA7: //Take the logical AND for each bit of the contents of register A and the contents of register A, and store the results in register A.
-		OPCYCLE(AND(Register.a), 4);
-	case 0xE6: //Take the logical OR for each bit of the contents of the 8-bit immediate operand d8 and the contents of register A, and store the results in register A.
-		OPCYCLE(AND(Gameboy.ReadMemory(Register.pc++)), 8);
-
-	case 0xB8:
-		//Compare the contents of register B and the contents of register A by calculating A - B, and set the Z flag if they are equal.
-		//The execution of this instruction does not affect the contents of register A.
-		OPCYCLE(CP(Register.b), 4);
-	case 0xB9:
-		//Compare the contents of register C and the contents of register A by calculating A - C, and set the Z flag if they are equal.
-		//The execution of this instruction does not affect the contents of register A.
-		OPCYCLE(CP(Register.c), 4);
-	case 0xBA:
-		//Compare the contents of register D and the contents of register A by calculating A - D, and set the Z flag if they are equal.
-		//The execution of this instruction does not affect the contents of register A.
-		OPCYCLE(CP(Register.d), 4);
-	case 0xBB:
-		//Compare the contents of register E and the contents of register A by calculating A - E, and set the Z flag if they are equal.
-		//The execution of this instruction does not affect the contents of register A.
-		OPCYCLE(CP(Register.e), 4);
-	case 0xBC:
-		//Compare the contents of register H and the contents of register A by calculating A - H, and set the Z flag if they are equal.
-		//The execution of this instruction does not affect the contents of register A.
-		OPCYCLE(CP(Register.h), 4);
-	case 0xBD:
-		//Compare the contents of register L and the contents of register A by calculating A - L, and set the Z flag if they are equal.
-		//The execution of this instruction does not affect the contents of register A.
-		OPCYCLE(CP(Register.l), 4);
-	case 0xBE:
-		//Compare the contents of memory specified by register pair HL and the contents of register A by calculating A - (HL), and set the Z flag if they are equal.
-		//The execution of this instruction does not affect the contents of register A.
-		OPCYCLE(CP(Gameboy.ReadMemory(Register.hl())), 8);
-	case 0xBF:
-		//Compare the contents of register A and the contents of register A by calculating A - A, and set the Z flag if they are equal.
-		//The execution of this instruction does not affect the contents of register A.
-		OPCYCLE(CP(Register.a), 4);
-	case 0xFE:
-		//Compare the contents of register A and the contents of the 8-bit immediate operand d8 by calculating A - d8, and set the Z flag if they are equal.
-		//The execution of this instruction does not affect the contents of register A.
-		OPCYCLE(CP(Gameboy.ReadMemory(Register.pc++)), 8);
-
-	case 0x05: //Decrement the contents of register B by 1.
-		OPCYCLE(DEC(Register.b), 4);
-	case 0x15: //Decrement the contents of register D by 1.
-		OPCYCLE(DEC(Register.d), 4);
-	case 0x25: //Decrement the contents of register H by 1.
-		OPCYCLE(DEC(Register.h), 4);
-	case 0x35: //Decrement the contents of memory specified by register pair HL by 1.
-	{
-		uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-		DEC(hlDeRef);
-		Gameboy.WriteMemory(Register.hl(), hlDeRef);
-		cycles = 12;
-		break;
-	}
-	case 0x0D: //Decrement the contents of register C by 1.
-		OPCYCLE(DEC(Register.c), 4);
-	case 0x1D: //Decrement the contents of register E by 1.
-		OPCYCLE(DEC(Register.e), 4);
-	case 0x2D: //Decrement the contents of register L by 1.
-		OPCYCLE(DEC(Register.l), 4);
-	case 0x3D: //Decrement the contents of register A by 1.
-		OPCYCLE(DEC(Register.a), 4);
-	case 0x0B: //Decrement the contents of register pair BC by 1.
-	{
-		uint16_t temp{ Register.bc() };
-		DEC(temp);
-		cycles = 8;
-		Register.bc(temp);
-		break;
-	}
-	case 0x1B: //Decrement the contents of register pair DE by 1.
-	{
-		uint16_t temp{ Register.de() };
-		DEC(temp);
-		cycles = 8;
-		Register.de(temp);
-		break;
-	}
-	case 0x2B: //Decrement the contents of register pair HL by 1.
-	{
-		uint16_t temp{ Register.hl() };
-		DEC(temp);
-		cycles = 8;
-		Register.hl(temp);
-		break;
-	}
-	case 0x3B: //Decrement the contents of register pair SP by 1.
-		OPCYCLE(DEC(Register.sp), 8);
-
-	case 0x04: //Increment the contents of register B by 1.
-		OPCYCLE(INC(Register.b), 4);
-	case 0x14: //Increment the contents of register D by 1.
-		OPCYCLE(INC(Register.d), 4);
-	case 0x24: //Increment the contents of register H by 1.
-		OPCYCLE(INC(Register.h), 4);
-	case 0x34: //Increment the contents of memory specified by register pair HL by 1.
-	{
-		uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-		INC(hlDeRef);
-		Gameboy.WriteMemory(Register.hl(), hlDeRef);
-		cycles = 12;
-		break;
-	}
-	case 0x0C: //Increment the contents of register C by 1.
-		OPCYCLE(INC(Register.c), 4);
-	case 0x1C: //Increment the contents of register E by 1.
-		OPCYCLE(INC(Register.e), 4);
-	case 0x2C: //Increment the contents of register L by 1.
-		OPCYCLE(INC(Register.l), 4);
-	case 0x3C: //Increment the contents of register A by 1.
-		OPCYCLE(INC(Register.a), 4);
-	case 0x03: //Increment the contents of register pair BC by 1.
-	{
-		uint16_t temp{ Register.bc() };
-		INC(temp);
-		cycles = 8;
-		Register.bc(temp);
-		break;
-	}
-	case 0x13: //Increment the contents of register pair DE by 1.
-	{
-		uint16_t temp{ Register.de() };
-		INC(temp);
-		cycles = 8;
-		Register.de(temp);
-		break;
-	}
-	case 0x23: //Increment the contents of register pair HL by 1.
-	{
-		uint16_t temp{ Register.hl() };
-		INC(temp);
-		cycles = 8;
-		Register.hl(temp);
-		break;
-	}
-	case 0x33: //Increment the contents of register pair SP by 1.
-		OPCYCLE(INC(Register.sp), 8);
-
-		BASICOPS(0xB7, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 4, OR);
-	case 0xB6:
-		//Take the logical OR for each bit of the contents of memory specified by register pair HL and the contents of register A, //and store the results in register A.
-		OPCYCLE(OR(Gameboy.ReadMemory(Register.hl())), 8);
-	case 0xF6:
-		//Take the logical OR for each bit of the contents of the 8-bit immediate operand d8 and the contents of register A, //and store the results in register A.
-		OPCYCLE(OR(Gameboy.ReadMemory(Register.pc++)), 8);
-
-		/*
-		-0x9F: Subtract the contents of register A and the CY flag from the contents of register A, and store the results in register A.
-		-0x98: Subtract the contents of register B and the CY flag from the contents of register A, and store the results in register A.
-		-0x99: Subtract the contents of register C and the CY flag from the contents of register A, and store the results in register A.
-		-0x9A: Subtract the contents of register D and the CY flag from the contents of register A, and store the results in register A.
-		-0x9B: Subtract the contents of register E and the CY flag from the contents of register A, and store the results in register A.
-		-0x9C: Subtract the contents of register H and the CY flag from the contents of register A, and store the results in register A.
-		-0x9D: Subtract the contents of register L and the CY flag from the contents of register A, and store the results in register A.
-		*/
-		BASICOPS(0x9F, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 4, SBC, , true);
-	case 0x9E:
-		//Subtract the contents of memory specified by register pair HL and the carry flag CY from the contents of register A, //and store the results in register A.
-		OPCYCLE(SBC(Gameboy.ReadMemory(Register.hl()), true), 8);
-	case 0xDE:
-		//Subtract the contents of the 8-bit immediate operand d8 and the carry flag CY from the contents of register A, //and store the results in register A.
-		OPCYCLE(SBC(Gameboy.ReadMemory(Register.pc++)), 8);
-
-		/*
-		-0x97: Subtract the contents of register A from the contents of register A, and store the results in register A.
-		-0x90: Subtract the contents of register B from the contents of register A, and store the results in register A.
-		-0x91: Subtract the contents of register C from the contents of register A, and store the results in register A.
-		-0x92: Subtract the contents of register D from the contents of register A, and store the results in register A.
-		-0x93: Subtract the contents of register E from the contents of register A, and store the results in register A.
-		-0x94: Subtract the contents of register H from the contents of register A, and store the results in register A.
-		-0x95: Subtract the contents of register L from the contents of register A, and store the results in register A.
-		*/
-		BASICOPS(0x97, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 4, SUB);
-	case 0x96: //Subtract the contents of memory specified by register pair HL from the contents of register A, and store the results in register A.
-		OPCYCLE(SUB(Gameboy.ReadMemory(Register.hl())), 8);
-	case 0xD6:
-		OPCYCLE(SUB(Gameboy.ReadMemory(Register.pc++)), 8);
-
-		BASICOPS(0xAF, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 4, XOR);
-	case 0xAE:
-		OPCYCLE(XOR(Gameboy.ReadMemory(Register.hl())), 8);
-	case 0xEE:
-		OPCYCLE(XOR(Gameboy.ReadMemory(Register.pc++)), 8);
-
-	case 0x27:
-		OPCYCLE(DAA(), 4);
-#pragma endregion
-#pragma region Loads
-	case 0x2a:
-		OPCYCLE((LD(Register.a, Gameboy.ReadMemory(Register.hl())), Register.hl(Register.hl() + 1)), 8);
-	case 0x3a:
-		OPCYCLE((LD(Register.a, Gameboy.ReadMemory(Register.hl())), Register.hl(Register.hl() - 1)), 8);
-	case 0xfa:
-		OPCYCLE(LD(Register.a, Gameboy.ReadMemory(Gameboy.ReadMemoryWord(Register.pc))), 16);
-	case 0x22:
-		OPCYCLE((LD(Register.hl(), Register.a), Register.hl(Register.hl() + 1)), 8);
-	case 0x32:
-		OPCYCLE((LD(Register.hl(), Register.a), Register.hl(Register.hl() - 1)), 8);
-	case 0x36:
-		OPCYCLE(LD(Register.hl(), Gameboy.ReadMemory(Register.pc++)), 12);
-	case 0xea:
-	{
-		const uint16_t adrs{ Gameboy.ReadMemoryWord(Register.pc) };
-		OPCYCLE(LD(adrs, Register.a), 16);
-	}
-	case 0x08:
-	{
-		Gameboy.WriteMemoryWord(Gameboy.ReadMemoryWord(Register.pc), Register.sp);
-		cycles = 20;
-		break;
-	}
-	case 0x31:
-		OPCYCLE(LD(&Register.sp, Gameboy.ReadMemoryWord(Register.pc)), 12);
-	case 0xf9:
-		OPCYCLE(LD(&Register.sp, Register.hl()), 8);
-	case 0x02:
-		OPCYCLE(LD(Register.bc(), Register.a), 8);
-	case 0x12:
-		OPCYCLE(LD(Register.de(), Register.a), 8);
-	case 0x06:
-		OPCYCLE(LD(Register.b, Gameboy.ReadMemory(Register.pc++)), 8);
-	case 0x11:
-	{
-		uint16_t temp{ Register.de() };
-		LD(&temp, Gameboy.ReadMemoryWord(Register.pc));
-		cycles = 12;
-		Register.de(temp);
-		break;
-	}
-	case 0x01:
-	{
-		uint16_t temp{ Register.bc() };
-		LD(&temp, Gameboy.ReadMemoryWord(Register.pc));
-		cycles = 12;
-		Register.bc(temp);
-		break;
-	}
-	case 0x21:
-	{
-		uint16_t temp{ Register.hl() };
-		LD(&temp, Gameboy.ReadMemoryWord(Register.pc));
-		cycles = 12;
-		Register.hl(temp);
-		break;
-	}
-	case 0xf8:
-	{
-		uint16_t temp{ Register.hl() };
-		LD(&temp, Register.sp + (int8_t)Gameboy.ReadMemory(Register.pc++));
-		cycles = 12; //CodeSlinger:0
-		Register.hl(temp);
-		break;
-	}
-	case 0x0a:
-		OPCYCLE(LD(Register.a, Gameboy.ReadMemory(Register.bc())), 8);
-	case 0x0e:
-		OPCYCLE(LD(Register.c, Gameboy.ReadMemory(Register.pc++)), 8);
-	case 0x16:
-		OPCYCLE(LD(Register.d, Gameboy.ReadMemory(Register.pc++)), 8);
-	case 0x1a:
-		OPCYCLE(LD(Register.a, Gameboy.ReadMemory(Register.de())), 8);
-	case 0x1e:
-		OPCYCLE(LD(Register.e, Gameboy.ReadMemory(Register.pc++)), 8);
-	case 0x26:
-		OPCYCLE(LD(Register.h, Gameboy.ReadMemory(Register.pc++)), 8);
-	case 0x2e:
-		OPCYCLE(LD(Register.l, Gameboy.ReadMemory(Register.pc++)), 8);
-	case 0x3e:
-		OPCYCLE(LD(Register.a, Gameboy.ReadMemory(Register.pc++)), 8);
-	case 0x40:
-		OPCYCLE(LD(Register.b, Register.b), 4);
-	case 0x41:
-		OPCYCLE(LD(Register.b, Register.c), 4);
-	case 0x42:
-		OPCYCLE(LD(Register.b, Register.d), 4);
-	case 0x43:
-		OPCYCLE(LD(Register.b, Register.e), 4);
-	case 0x44:
-		OPCYCLE(LD(Register.b, Register.h), 4);
-	case 0x45:
-		OPCYCLE(LD(Register.b, Register.l), 4);
-	case 0x46:
-		OPCYCLE(LD(Register.b, Gameboy.ReadMemory(Register.hl())), 8);
-	case 0x47:
-		OPCYCLE(LD(Register.b, Register.a), 4);
-	case 0x48:
-		OPCYCLE(LD(Register.c, Register.b), 4);
-	case 0x49:
-		OPCYCLE(LD(Register.c, Register.c), 4);
-	case 0x4a:
-		OPCYCLE(LD(Register.c, Register.d), 4);
-	case 0x4b:
-		OPCYCLE(LD(Register.c, Register.e), 4);
-	case 0x4c:
-		OPCYCLE(LD(Register.c, Register.h), 4);
-	case 0x4d:
-		OPCYCLE(LD(Register.c, Register.l), 4);
-	case 0x4e:
-		OPCYCLE(LD(Register.c, Gameboy.ReadMemory(Register.hl())), 8);
-	case 0x4f:
-		OPCYCLE(LD(Register.c, Register.a), 4);
-	case 0x50:
-		OPCYCLE(LD(Register.d, Register.b), 4);
-	case 0x51:
-		OPCYCLE(LD(Register.d, Register.c), 4);
-	case 0x52:
-		OPCYCLE(LD(Register.d, Register.d), 4);
-	case 0x53:
-		OPCYCLE(LD(Register.d, Register.e), 4);
-	case 0x54:
-		OPCYCLE(LD(Register.d, Register.h), 4);
-	case 0x55:
-		OPCYCLE(LD(Register.d, Register.l), 4);
-	case 0x56:
-		OPCYCLE(LD(Register.d, Gameboy.ReadMemory(Register.hl())), 8);
-	case 0x57:
-		OPCYCLE(LD(Register.d, Register.a), 4);
-	case 0x58:
-		OPCYCLE(LD(Register.e, Register.b), 4);
-	case 0x59:
-		OPCYCLE(LD(Register.e, Register.c), 4);
-	case 0x5a:
-		OPCYCLE(LD(Register.e, Register.d), 4);
-	case 0x5b:
-		OPCYCLE(LD(Register.e, Register.e), 4);
-	case 0x5c:
-		OPCYCLE(LD(Register.e, Register.h), 4);
-	case 0x5d:
-		OPCYCLE(LD(Register.e, Register.l), 4);
-	case 0x5e:
-		OPCYCLE(LD(Register.e, Gameboy.ReadMemory(Register.hl())), 8);
-	case 0x5f:
-		OPCYCLE(LD(Register.e, Register.a), 4);
-	case 0x60:
-		OPCYCLE(LD(Register.h, Register.b), 4);
-	case 0x61:
-		OPCYCLE(LD(Register.h, Register.c), 4);
-	case 0x62:
-		OPCYCLE(LD(Register.h, Register.d), 4);
-	case 0x63:
-		OPCYCLE(LD(Register.h, Register.e), 4);
-	case 0x64:
-		OPCYCLE(LD(Register.h, Register.h), 4);
-	case 0x65:
-		OPCYCLE(LD(Register.h, Register.l), 4);
-	case 0x66:
-		OPCYCLE(LD(Register.h, Gameboy.ReadMemory(Register.hl())), 8);
-	case 0x67:
-		OPCYCLE(LD(Register.h, Register.a), 4);
-	case 0x68:
-		OPCYCLE(LD(Register.l, Register.b), 4);
-	case 0x69:
-		OPCYCLE(LD(Register.l, Register.c), 4);
-	case 0x6a:
-		OPCYCLE(LD(Register.l, Register.d), 4);
-	case 0x6b:
-		OPCYCLE(LD(Register.l, Register.e), 4);
-	case 0x6c:
-		OPCYCLE(LD(Register.l, Register.h), 4);
-	case 0x6d:
-		OPCYCLE(LD(Register.l, Register.l), 4);
-	case 0x6e:
-		OPCYCLE(LD(Register.l, Gameboy.ReadMemory(Register.hl())), 8);
-	case 0x6f:
-		OPCYCLE(LD(Register.l, Register.a), 4);
-	case 0x78:
-		OPCYCLE(LD(Register.a, Register.b), 4);
-	case 0x79:
-		OPCYCLE(LD(Register.a, Register.c), 4);
-	case 0x7a:
-		OPCYCLE(LD(Register.a, Register.d), 4);
-	case 0x7b:
-		OPCYCLE(LD(Register.a, Register.e), 4);
-	case 0x7c:
-		OPCYCLE(LD(Register.a, Register.h), 4);
-	case 0x7d:
-		OPCYCLE(LD(Register.a, Register.l), 4);
-	case 0x7e:
-		OPCYCLE(LD(Register.a, Gameboy.ReadMemory(Register.hl())), 8);
-	case 0x7f:
-		OPCYCLE(LD(Register.a, Register.a), 4);
-	case 0xf2:
-		OPCYCLE(LD(Register.a, Gameboy.ReadMemory(0xFF00 + Register.c)), 8); //ok acc to gb manual
-	case 0x70:
-		OPCYCLE(LD(Register.hl(), Register.b), 8);
-	case 0x71:
-		OPCYCLE(LD(Register.hl(), Register.c), 8);
-	case 0x72:
-		OPCYCLE(LD(Register.hl(), Register.d), 8);
-	case 0x73:
-		OPCYCLE(LD(Register.hl(), Register.e), 8);
-	case 0x74:
-		OPCYCLE(LD(Register.hl(), Register.h), 8);
-	case 0x75:
-		OPCYCLE(LD(Register.hl(), Register.l), 8);
-	case 0x77:
-		OPCYCLE(LD(Register.hl(), Register.a), 8);
-	case 0xe2:
-		OPCYCLE(LD(static_cast<uint16_t>(0xFF00 + Register.c), Register.a), 8);
-	case 0xE0:
-		OPCYCLE(LD(static_cast<uint16_t>(0xFF00 + Gameboy.ReadMemory(Register.pc++)), Register.a), 12);
-	case 0xF0:
-	{
-		//if(Register.pc==10667) __debugbreak();
-		const uint8_t val{ Gameboy.ReadMemory(Register.pc++) };
-		OPCYCLE(LD(Register.a, Gameboy.ReadMemory(static_cast<uint16_t>(0xFF00 + val))), 12);
-	}
-
-	case 0xC1:
-	{
-		uint16_t temp;
-		POP(temp);
-		Register.bc(temp);
-		cycles = 12;
-		break;
-	}
-	case 0xD1:
-	{
-		uint16_t temp;
-		POP(temp);
-		Register.de(temp);
-		cycles = 12;
-		break;
-	}
-	case 0xE1:
-	{
-		uint16_t temp;
-		POP(temp);
-		Register.hl(temp);
-		cycles = 12;
-		break;
-	}
-	case 0xF1:
-	{
-		uint16_t temp;
-		POP(temp);
-		Register.af(temp);
-		cycles = 12;
-		break;
-	}
-
-	case 0xC5:
-		OPCYCLE(PUSH(Register.bc()), 16);
-	case 0xD5:
-		OPCYCLE(PUSH(Register.de()), 16);
-	case 0xE5:
-		OPCYCLE(PUSH(Register.hl()), 16);
-	case 0xF5:
-		OPCYCLE(PUSH(Register.af()), 16);
-
-#pragma endregion
-#pragma region Rotates and Shifts
-	case 0x07:
-		/*
-		Rotate the contents of register A to the left.
-		That is, the contents of bit 0 are copied to bit 1, 
-		and the previous contents of bit 1 (before the copy operation) are copied to bit 2. 
-		The same operation is repeated in sequence for the rest of the register.
-		The contents of bit 7 are placed in both the CY flag and bit 0 of register A.
-		*/
-		OPCYCLE(RLC(Register.a), 4); //Codeslinger: 8
-		break;
-	//case 0x0F:
-	//	/*
-	//	Rotate the contents of register A to the right.
-	//	That is, the contents of bit 7 are copied to bit 6,
-	//	and the previous contents of bit 6 (before the copy) are copied to bit 5.
-	//	The same operation is repeated in sequence for the rest of the register.
-	//	The contents of bit 0 are placed in both the CY flag and bit 7 of register A.
-	//	*/
-	//	OPCYCLE(RRC(Register.a), 4); //Codeslinger: 8
-
-	//case 0x17:
-	//	/*
-	//	Rotate the contents of register A to the right, through the carry (CY) flag. 
-	//	That is, the contents of bit 7 are copied to bit 6, 
-	//	and the previous contents of bit 6 (before the copy) are copied to bit 5. 
-	//	The same operation is repeated in sequence for the rest of the register.
-	//	The previous contents of the carry flag are copied to bit 7.
-	//	*/
-	//	OPCYCLE(RL(Register.a), 4); //Codeslinger: 8
-
-	case 0x1F:
-		/*
-		Rotate the contents of register A to the right, through the carry (CY) flag. 
-		That is, the contents of bit 7 are copied to bit 6, 
-		and the previous contents of bit 6 (before the copy) are copied to bit 5. 
-		The same operation is repeated in sequence for the rest of the register.
-		The previous contents of the carry flag are copied to bit 7.
-		*/
-		OPCYCLE(RR(Register.a), 4); //Codeslinger: 8
-
-#pragma endregion
-#pragma region Misc
-	case 0x2F:
-		OPCYCLE(CPL(), 4);
-	case 0x3F:
-		OPCYCLE(CCF(), 4);
-	case 0x37:
-		OPCYCLE(SCF(), 4);
-	case 0x10:
-		OPCYCLE(STOP(), 4);
-	case 0x76:
-		OPCYCLE(HALT(), 4);
-	case 0xF3:
-		OPCYCLE(DI(), 4);
-	case 0xFB:
-		OPCYCLE(EI(), 4);
-#pragma endregion
-#pragma region Calls n Jumps
-	case 0xC4:
-		OPCYCLE(CALL(Gameboy.ReadMemoryWord(Register.pc), !Register.zeroF), 0);
-	case 0xD4:
-		OPCYCLE(CALL(Gameboy.ReadMemoryWord(Register.pc), !Register.carryF), 0);
-	case 0xCC:
-		OPCYCLE(CALL(Gameboy.ReadMemoryWord(Register.pc), Register.zeroF), 0);
-	case 0xDC:
-		OPCYCLE(CALL(Gameboy.ReadMemoryWord(Register.pc), Register.carryF), 0);
-	case 0xCD:
-		OPCYCLE(CALL(Gameboy.ReadMemoryWord(Register.pc), true), 0);;
-	case 0xC2:
-		OPCYCLE(JP(Gameboy.ReadMemoryWord(Register.pc), !Register.zeroF), 0);
-	case 0xD2:
-		OPCYCLE(JP(Gameboy.ReadMemoryWord(Register.pc), !Register.carryF), 0);
-	case 0xC3:
-		OPCYCLE(JP(Gameboy.ReadMemoryWord(Register.pc), true), 0);
-	case 0xE9:
-		OPCYCLE(JP(Register.hl(), true, false), 4);
-	case 0xCA:
-		OPCYCLE(JP(Gameboy.ReadMemoryWord(Register.pc), Register.zeroF), 0);
-	case 0xDA:
-		OPCYCLE(JP(Gameboy.ReadMemoryWord(Register.pc), Register.carryF), 0);;
-	case 0x20:
-		OPCYCLE(JR(Gameboy.ReadMemory(Register.pc++), !Register.zeroF), 0);
-	case 0x30:
-		OPCYCLE(JR(Gameboy.ReadMemory(Register.pc++), !Register.carryF), 0);
-	case 0x18:
-		OPCYCLE(JR(Gameboy.ReadMemory(Register.pc++), true), 0);
-	case 0x28:
-		OPCYCLE(JR(Gameboy.ReadMemory(Register.pc++), Register.zeroF), 0);
-	case 0x38:
-		OPCYCLE(JR(Gameboy.ReadMemory(Register.pc++), Register.carryF), 0);
-
-	case 0xC0:
-		OPCYCLE(RET(!Register.zeroF), 0);
-	case 0xD0:
-		OPCYCLE(RET(!Register.carryF), 0);
-	case 0xC8:
-		OPCYCLE(RET(Register.zeroF), 0);
-	case 0xD8:
-		OPCYCLE(RET(Register.carryF), 0);
-	case 0xC9:
-		OPCYCLE(RET(true, false), 16); //CodeSlinger:8
-	case 0xD9:
-		OPCYCLE(RETI(), 16); //CodeSlinger:8
-
-	case 0xC7:
-		OPCYCLE(RST(0x0), 16); //CodeSlinger:32 (all)
-	case 0xD7:
-		OPCYCLE(RST(0x10), 16);
-	case 0xE7:
-		OPCYCLE(RST(0x20), 16);
-	case 0xF7:
-		OPCYCLE(RST(0x30), 16);
-	case 0xCF:
-		OPCYCLE(RST(0x08), 16);
-	case 0xDF:
-		OPCYCLE(RST(0x18), 16);
-	case 0xEF:
-		OPCYCLE(RST(0x28), 16);
-	case 0xFF:
-		OPCYCLE(RST(0x38), 16);
-#pragma endregion
-
-#pragma region Extended Opcodes
-	case 0xCB:
-		opcode = Gameboy.ReadMemory(Register.pc++);
 		switch (opcode)
 		{
-#pragma region Rotates and Shifts
-		case 0x18:
-			OPCYCLE(RR(Register.b), 8);
-		case 0x19:
-			OPCYCLE(RR(Register.c), 8);
-		case 0x1A:
-			OPCYCLE(RR(Register.d), 8);
-		case 0x1B:
-			OPCYCLE(RR(Register.e), 8);
-		case 0x1C:
-			OPCYCLE(RR(Register.h), 8);
-		case 0x1D:
-			OPCYCLE(RR(Register.l), 8);
-		case 0x1E:
+		case 0x0: //Only advances the program counter by 1. Performs no other operations that would have an effect.
+			cycles = 4;
+			break;
+	
+	#pragma region ALU
+			/*
+			- 0x8F: Add the contents of register A and the CY flag to the contents of register A, and store the results in register A.
+			- 0x88: Add the contents of register B and the CY flag to the contents of register A, and store the results in register A.
+			- 0x89: Add the contents of register C and the CY flag to the contents of register A, and store the results in register A.
+			- 0x8A: Add the contents of register D and the CY flag to the contents of register A, and store the results in register A.
+			- 0x8B: Add the contents of register E and the CY flag to the contents of register A, and store the results in register A.
+			- 0x8C: Add the contents of register H and the CY flag to the contents of register A, and store the results in register A.
+			- 0x8D: Add the contents of register L and the CY flag to the contents of register A, and store the results in register A.
+			*/
+			BASICOPS(0x8F, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 4, ADC, , true);
+		case 0x8E: //Add the contents of memory specified by register pair HL and the CY flag to the contents of register A, and store the results in register A.
+			OPCYCLE(ADC(Gameboy.ReadMemory(Register.hl()), true), 8);
+		case 0xCE: //Add the contents of the 8-bit immediate operand d8 and the CY flag to the contents of register A, and store the results in register A.
+			OPCYCLE(ADC(Gameboy.ReadMemory(Register.pc++), true), 8);
+	
+		case 0x80: //Add the contents of register B to the contents of register A, and store the results in register A.
+			OPCYCLE(ADD(Register.b), 4);
+		case 0x81: //Add the contents of register C to the contents of register A, and store the results in register A.
+			OPCYCLE(ADD(Register.c), 4);
+		case 0x82: //Add the contents of register D to the contents of register A, and store the results in register A.
+			OPCYCLE(ADD(Register.d), 4);
+		case 0x83: //Add the contents of register E to the contents of register A, and store the results in register A.
+			OPCYCLE(ADD(Register.e), 4);
+		case 0x84: //Add the contents of register H to the contents of register A, and store the results in register A.
+			OPCYCLE(ADD(Register.h), 4);
+		case 0x85: //Add the contents of register L to the contents of register A, and store the results in register A.
+			OPCYCLE(ADD(Register.l), 4);
+		case 0x87: //Add the contents of register A to the contents of register A, and store the results in register A.
+			OPCYCLE(ADD(Register.a), 4);
+		case 0x86: //Add the contents of memory specified by register pair HL to the contents of register A, and store the results in register A.
+			OPCYCLE(ADD(Gameboy.ReadMemory(Register.hl())), 8);
+		case 0xC6: //Add the contents of the 8-bit immediate operand d8 to the contents of register A, and store the results in register A.
+			OPCYCLE(ADD(Gameboy.ReadMemory(Register.pc++)), 8);
+		case 0xE8: //Add the contents of the 8-bit signed (2's complement) immediate operand s8 and the stack pointer SP and store the results in SP.
+			OPCYCLE(ADD16(false, Gameboy.ReadMemory(Register.pc++)), 16); //Might have to add this value to the pc
+		case 0x09: //Add the contents of register pair BC to the contents of register pair HL, and store the results in register pair HL.
+			OPCYCLE(ADD16(true, Register.bc()), 8);
+		case 0x19: //Add the contents of register pair DE to the contents of register pair HL, and store the results in register pair HL.
+			OPCYCLE(ADD16(true, Register.de()), 8);
+		case 0x29: //Add the contents of register pair HL to the contents of register pair HL, and store the results in register pair HL.
+			OPCYCLE(ADD16(true, Register.hl()), 8);
+		case 0x39: //Add the contents of register pair SP to the contents of register pair HL, and store the results in register pair HL.
+			OPCYCLE(ADD16(true, Register.sp), 8);
+	
+		case 0xA0: //Take the logical AND for each bit of the contents of register B and the contents of register A, and store the results in register A.
+			OPCYCLE(AND(Register.b), 4);
+		case 0xA1: //Take the logical AND for each bit of the contents of register C and the contents of register A, and store the results in register A.
+			OPCYCLE(AND(Register.c), 4);
+		case 0xA2: //Take the logical AND for each bit of the contents of register D and the contents of register A, and store the results in register A.
+			OPCYCLE(AND(Register.d), 4);
+		case 0xA3: //Take the logical AND for each bit of the contents of register E and the contents of register A, and store the results in register A.
+			OPCYCLE(AND(Register.e), 4);
+		case 0xA4: //Take the logical AND for each bit of the contents of register H and the contents of register A, and store the results in register A.
+			OPCYCLE(AND(Register.h), 4);
+		case 0xA5: //Take the logical AND for each bit of the contents of register L and the contents of register A, and store the results in register A.
+			OPCYCLE(AND(Register.l), 4);
+		case 0xA6: //Take the logical AND for each bit of the contents of memory specified by register pair HL and the contents of register A, and store the results in register A.
+			OPCYCLE(AND(Gameboy.ReadMemory(Register.hl())), 8);
+		case 0xA7: //Take the logical AND for each bit of the contents of register A and the contents of register A, and store the results in register A.
+			OPCYCLE(AND(Register.a), 4);
+		case 0xE6: //Take the logical OR for each bit of the contents of the 8-bit immediate operand d8 and the contents of register A, and store the results in register A.
+			OPCYCLE(AND(Gameboy.ReadMemory(Register.pc++)), 8);
+	
+		case 0xB8:
+			//Compare the contents of register B and the contents of register A by calculating A - B, and set the Z flag if they are equal.
+			//The execution of this instruction does not affect the contents of register A.
+			OPCYCLE(CP(Register.b), 4);
+		case 0xB9:
+			//Compare the contents of register C and the contents of register A by calculating A - C, and set the Z flag if they are equal.
+			//The execution of this instruction does not affect the contents of register A.
+			OPCYCLE(CP(Register.c), 4);
+		case 0xBA:
+			//Compare the contents of register D and the contents of register A by calculating A - D, and set the Z flag if they are equal.
+			//The execution of this instruction does not affect the contents of register A.
+			OPCYCLE(CP(Register.d), 4);
+		case 0xBB:
+			//Compare the contents of register E and the contents of register A by calculating A - E, and set the Z flag if they are equal.
+			//The execution of this instruction does not affect the contents of register A.
+			OPCYCLE(CP(Register.e), 4);
+		case 0xBC:
+			//Compare the contents of register H and the contents of register A by calculating A - H, and set the Z flag if they are equal.
+			//The execution of this instruction does not affect the contents of register A.
+			OPCYCLE(CP(Register.h), 4);
+		case 0xBD:
+			//Compare the contents of register L and the contents of register A by calculating A - L, and set the Z flag if they are equal.
+			//The execution of this instruction does not affect the contents of register A.
+			OPCYCLE(CP(Register.l), 4);
+		case 0xBE:
+			//Compare the contents of memory specified by register pair HL and the contents of register A by calculating A - (HL), and set the Z flag if they are equal.
+			//The execution of this instruction does not affect the contents of register A.
+			OPCYCLE(CP(Gameboy.ReadMemory(Register.hl())), 8);
+		case 0xBF:
+			//Compare the contents of register A and the contents of register A by calculating A - A, and set the Z flag if they are equal.
+			//The execution of this instruction does not affect the contents of register A.
+			OPCYCLE(CP(Register.a), 4);
+		case 0xFE:
+			//Compare the contents of register A and the contents of the 8-bit immediate operand d8 by calculating A - d8, and set the Z flag if they are equal.
+			//The execution of this instruction does not affect the contents of register A.
+			OPCYCLE(CP(Gameboy.ReadMemory(Register.pc++)), 8);
+	
+		case 0x05: //Decrement the contents of register B by 1.
+			OPCYCLE(DEC(Register.b), 4);
+		case 0x15: //Decrement the contents of register D by 1.
+			OPCYCLE(DEC(Register.d), 4);
+		case 0x25: //Decrement the contents of register H by 1.
+			OPCYCLE(DEC(Register.h), 4);
+		case 0x35: //Decrement the contents of memory specified by register pair HL by 1.
 		{
 			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			RR(hlDeRef);
+			DEC(hlDeRef);
 			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
+			cycles = 12;
 			break;
 		}
-		case 0x1F:
-			OPCYCLE(RR(Register.a), 8);
-		case 0x20:
-			OPCYCLE(SLA(Register.b), 8);
-		case 0x21:
-			OPCYCLE(SLA(Register.c), 8);
-		case 0x22:
-			OPCYCLE(SLA(Register.d), 8);
-		case 0x23:
-			OPCYCLE(SLA(Register.e), 8);
-		case 0x24:
-			OPCYCLE(SLA(Register.h), 8);
-		case 0x25:
-			OPCYCLE(SLA(Register.l), 8);
-		case 0x26:
+		case 0x0D: //Decrement the contents of register C by 1.
+			OPCYCLE(DEC(Register.c), 4);
+		case 0x1D: //Decrement the contents of register E by 1.
+			OPCYCLE(DEC(Register.e), 4);
+		case 0x2D: //Decrement the contents of register L by 1.
+			OPCYCLE(DEC(Register.l), 4);
+		case 0x3D: //Decrement the contents of register A by 1.
+			OPCYCLE(DEC(Register.a), 4);
+		case 0x0B: //Decrement the contents of register pair BC by 1.
+		{
+			uint16_t temp{ Register.bc() };
+			DEC(temp);
+			cycles = 8;
+			Register.bc(temp);
+			break;
+		}
+		case 0x1B: //Decrement the contents of register pair DE by 1.
+		{
+			uint16_t temp{ Register.de() };
+			DEC(temp);
+			cycles = 8;
+			Register.de(temp);
+			break;
+		}
+		case 0x2B: //Decrement the contents of register pair HL by 1.
+		{
+			uint16_t temp{ Register.hl() };
+			DEC(temp);
+			cycles = 8;
+			Register.hl(temp);
+			break;
+		}
+		case 0x3B: //Decrement the contents of register pair SP by 1.
+			OPCYCLE(DEC(Register.sp), 8);
+	
+		case 0x04: //Increment the contents of register B by 1.
+			OPCYCLE(INC(Register.b), 4);
+		case 0x14: //Increment the contents of register D by 1.
+			OPCYCLE(INC(Register.d), 4);
+		case 0x24: //Increment the contents of register H by 1.
+			OPCYCLE(INC(Register.h), 4);
+		case 0x34: //Increment the contents of memory specified by register pair HL by 1.
 		{
 			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			SLA(hlDeRef);
+			INC(hlDeRef);
 			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
+			cycles = 12;
 			break;
 		}
+		case 0x0C: //Increment the contents of register C by 1.
+			OPCYCLE(INC(Register.c), 4);
+		case 0x1C: //Increment the contents of register E by 1.
+			OPCYCLE(INC(Register.e), 4);
+		case 0x2C: //Increment the contents of register L by 1.
+			OPCYCLE(INC(Register.l), 4);
+		case 0x3C: //Increment the contents of register A by 1.
+			OPCYCLE(INC(Register.a), 4);
+		case 0x03: //Increment the contents of register pair BC by 1.
+		{
+			uint16_t temp{ Register.bc() };
+			INC(temp);
+			cycles = 8;
+			Register.bc(temp);
+			break;
+		}
+		case 0x13: //Increment the contents of register pair DE by 1.
+		{
+			uint16_t temp{ Register.de() };
+			INC(temp);
+			cycles = 8;
+			Register.de(temp);
+			break;
+		}
+		case 0x23: //Increment the contents of register pair HL by 1.
+		{
+			uint16_t temp{ Register.hl() };
+			INC(temp);
+			cycles = 8;
+			Register.hl(temp);
+			break;
+		}
+		case 0x33: //Increment the contents of register pair SP by 1.
+			OPCYCLE(INC(Register.sp), 8);
+	
+			BASICOPS(0xB7, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 4, OR);
+		case 0xB6:
+			//Take the logical OR for each bit of the contents of memory specified by register pair HL and the contents of register A, //and store the results in register A.
+			OPCYCLE(OR(Gameboy.ReadMemory(Register.hl())), 8);
+		case 0xF6:
+			//Take the logical OR for each bit of the contents of the 8-bit immediate operand d8 and the contents of register A, //and store the results in register A.
+			OPCYCLE(OR(Gameboy.ReadMemory(Register.pc++)), 8);
+	
+			/*
+			-0x9F: Subtract the contents of register A and the CY flag from the contents of register A, and store the results in register A.
+			-0x98: Subtract the contents of register B and the CY flag from the contents of register A, and store the results in register A.
+			-0x99: Subtract the contents of register C and the CY flag from the contents of register A, and store the results in register A.
+			-0x9A: Subtract the contents of register D and the CY flag from the contents of register A, and store the results in register A.
+			-0x9B: Subtract the contents of register E and the CY flag from the contents of register A, and store the results in register A.
+			-0x9C: Subtract the contents of register H and the CY flag from the contents of register A, and store the results in register A.
+			-0x9D: Subtract the contents of register L and the CY flag from the contents of register A, and store the results in register A.
+			*/
+			BASICOPS(0x9F, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 4, SBC, , true);
+		case 0x9E:
+			//Subtract the contents of memory specified by register pair HL and the carry flag CY from the contents of register A, //and store the results in register A.
+			OPCYCLE(SBC(Gameboy.ReadMemory(Register.hl()), true), 8);
+		case 0xDE:
+			//Subtract the contents of the 8-bit immediate operand d8 and the carry flag CY from the contents of register A, //and store the results in register A.
+			OPCYCLE(SBC(Gameboy.ReadMemory(Register.pc++)), 8);
+	
+			/*
+			-0x97: Subtract the contents of register A from the contents of register A, and store the results in register A.
+			-0x90: Subtract the contents of register B from the contents of register A, and store the results in register A.
+			-0x91: Subtract the contents of register C from the contents of register A, and store the results in register A.
+			-0x92: Subtract the contents of register D from the contents of register A, and store the results in register A.
+			-0x93: Subtract the contents of register E from the contents of register A, and store the results in register A.
+			-0x94: Subtract the contents of register H from the contents of register A, and store the results in register A.
+			-0x95: Subtract the contents of register L from the contents of register A, and store the results in register A.
+			*/
+			BASICOPS(0x97, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 4, SUB);
+		case 0x96: //Subtract the contents of memory specified by register pair HL from the contents of register A, and store the results in register A.
+			OPCYCLE(SUB(Gameboy.ReadMemory(Register.hl())), 8);
+		case 0xD6:
+			OPCYCLE(SUB(Gameboy.ReadMemory(Register.pc++)), 8);
+	
+			BASICOPS(0xAF, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 4, XOR);
+		case 0xAE:
+			OPCYCLE(XOR(Gameboy.ReadMemory(Register.hl())), 8);
+		case 0xEE:
+			OPCYCLE(XOR(Gameboy.ReadMemory(Register.pc++)), 8);
+	
 		case 0x27:
-			OPCYCLE(SLA(Register.a), 8);
-		case 0x38:
-			OPCYCLE(SRL(Register.b), 8);
-		case 0x39:
-			OPCYCLE(SRL(Register.c), 8);
-		case 0x3A:
-			OPCYCLE(SRL(Register.d), 8);
-		case 0x3B:
-			OPCYCLE(SRL(Register.e), 8);
-		case 0x3C:
-			OPCYCLE(SRL(Register.h), 8);
-		case 0x3D:
-			OPCYCLE(SRL(Register.l), 8);
-		case 0x3E:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			SRL(hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0x3F:
-			OPCYCLE(SRL(Register.a), 8);
-		case 0x00:
-			OPCYCLE(RLC(Register.b), 8);
-		case 0x01:
-			OPCYCLE(RLC(Register.c), 8);
-		case 0x02:
-			OPCYCLE(RLC(Register.d), 8);
-		case 0x03:
-			OPCYCLE(RLC(Register.e), 8);
-		case 0x04:
-			OPCYCLE(RLC(Register.h), 8);
-		case 0x05:
-			OPCYCLE(RLC(Register.l), 8);
-		case 0x06:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			RLC(hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0x07:
-			OPCYCLE(RLC(Register.a), 8);
-#pragma endregion
-#pragma region Bits
-		case 0x40:
-			OPCYCLE(BITop(0, Register.b), 8);
-		case 0x41:
-			OPCYCLE(BITop(0, Register.c), 8);
-		case 0x42:
-			OPCYCLE(BITop(0, Register.d), 8);
-		case 0x43:
-			OPCYCLE(BITop(0, Register.e), 8);
-		case 0x44:
-			OPCYCLE(BITop(0, Register.h), 8);
-		case 0x45:
-			OPCYCLE(BITop(0, Register.l), 8);
-		case 0x46:
-		{
-			BITop(0, Gameboy.ReadMemory(Register.hl()));
-			cycles = 16;
-			break;
-		}
-		case 0x47:
-			OPCYCLE(BITop(0, Register.a), 8);
-		case 0x48:
-			OPCYCLE(BITop(1, Register.b), 8);
-		case 0x49:
-			OPCYCLE(BITop(1, Register.c), 8);
-		case 0x4a:
-			OPCYCLE(BITop(1, Register.d), 8);
-		case 0x4b:
-			OPCYCLE(BITop(1, Register.e), 8);
-		case 0x4c:
-			OPCYCLE(BITop(1, Register.h), 8);
-		case 0x4d:
-			OPCYCLE(BITop(1, Register.l), 8);
-		case 0x4e:
-		{
-			BITop(1, Gameboy.ReadMemory(Register.hl()));
-			cycles = 16;
-			break;
-		}
-		case 0x4f:
-			OPCYCLE(BITop(1, Register.a), 8);
-		case 0x50:
-			OPCYCLE(BITop(2, Register.b), 8);
-		case 0x51:
-			OPCYCLE(BITop(2, Register.c), 8);
-		case 0x52:
-			OPCYCLE(BITop(2, Register.d), 8);
-		case 0x53:
-			OPCYCLE(BITop(2, Register.e), 8);
-		case 0x54:
-			OPCYCLE(BITop(2, Register.h), 8);
-		case 0x55:
-			OPCYCLE(BITop(2, Register.l), 8);
-		case 0x56:
-		{
-			BITop(2, Gameboy.ReadMemory(Register.hl()));
-			cycles = 16;
-			break;
-		}
-		case 0x57:
-			OPCYCLE(BITop(2, Register.a), 8);
-		case 0x58:
-			OPCYCLE(BITop(3, Register.b), 8);
-		case 0x59:
-			OPCYCLE(BITop(3, Register.c), 8);
-		case 0x5a:
-			OPCYCLE(BITop(3, Register.d), 8);
-		case 0x5b:
-			OPCYCLE(BITop(3, Register.e), 8);
-		case 0x5c:
-			OPCYCLE(BITop(3, Register.h), 8);
-		case 0x5d:
-			OPCYCLE(BITop(3, Register.l), 8);
-		case 0x5e:
-		{
-			BITop(3, Gameboy.ReadMemory(Register.hl()));
-			cycles = 16;
-			break;
-		}
-		case 0x5f:
-			OPCYCLE(BITop(3, Register.a), 8);
-		case 0x60:
-			OPCYCLE(BITop(4, Register.b), 8);
-		case 0x61:
-			OPCYCLE(BITop(4, Register.c), 8);
-		case 0x62:
-			OPCYCLE(BITop(4, Register.d), 8);
-		case 0x63:
-			OPCYCLE(BITop(4, Register.e), 8);
-		case 0x64:
-			OPCYCLE(BITop(4, Register.h), 8);
-		case 0x65:
-			OPCYCLE(BITop(4, Register.l), 8);
-		case 0x66:
-		{
-			BITop(4, Gameboy.ReadMemory(Register.hl()));
-			cycles = 16;
-			break;
-		}
-		case 0x67:
-			OPCYCLE(BITop(4, Register.a), 8);
-		case 0x68:
-			OPCYCLE(BITop(5, Register.b), 8);
-		case 0x69:
-			OPCYCLE(BITop(5, Register.c), 8);
-		case 0x6a:
-			OPCYCLE(BITop(5, Register.d), 8);
-		case 0x6b:
-			OPCYCLE(BITop(5, Register.e), 8);
-		case 0x6c:
-			OPCYCLE(BITop(5, Register.h), 8);
-		case 0x6d:
-			OPCYCLE(BITop(5, Register.l), 8);
-		case 0x6e:
-		{
-			BITop(5, Gameboy.ReadMemory(Register.hl()));
-			cycles = 16;
-			break;
-		}
-		case 0x6f:
-			OPCYCLE(BITop(5, Register.a), 8);
-		case 0x70:
-			OPCYCLE(BITop(6, Register.b), 8);
-		case 0x71:
-			OPCYCLE(BITop(6, Register.c), 8);
-		case 0x72:
-			OPCYCLE(BITop(6, Register.d), 8);
-		case 0x73:
-			OPCYCLE(BITop(6, Register.e), 8);
-		case 0x74:
-			OPCYCLE(BITop(6, Register.h), 8);
-		case 0x75:
-			OPCYCLE(BITop(6, Register.l), 8);
-		case 0x76:
-		{
-			BITop(6, Gameboy.ReadMemory(Register.hl()));
-			cycles = 16;
-			break;
-		}
-		case 0x77:
-			OPCYCLE(BITop(6, Register.a), 8);
-		case 0x78:
-			OPCYCLE(BITop(7, Register.b), 8);
-		case 0x79:
-			OPCYCLE(BITop(7, Register.c), 8);
-		case 0x7a:
-			OPCYCLE(BITop(7, Register.d), 8);
-		case 0x7b:
-			OPCYCLE(BITop(7, Register.e), 8);
-		case 0x7c:
-			OPCYCLE(BITop(7, Register.h), 8);
-		case 0x7d:
-			OPCYCLE(BITop(7, Register.l), 8);
-		case 0x7e:
-		{
-			BITop(7, Gameboy.ReadMemory(Register.hl()));
-			cycles = 16;
-			break;
-		}
-		case 0x7f:
-			OPCYCLE(BITop(7, Register.a), 8);
-
-		case 0x80:
-			OPCYCLE(RES(0, Register.b), 8);
-		case 0x81:
-			OPCYCLE(RES(0, Register.c), 8);
-		case 0x82:
-			OPCYCLE(RES(0, Register.d), 8);
-		case 0x83:
-			OPCYCLE(RES(0, Register.e), 8);
-		case 0x84:
-			OPCYCLE(RES(0, Register.h), 8);
-		case 0x85:
-			OPCYCLE(RES(0, Register.l), 8);
-		case 0x86:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			RES(0, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0x87:
-			OPCYCLE(RES(0, Register.a), 8);
-		case 0x88:
-			OPCYCLE(RES(1, Register.b), 8);
-		case 0x89:
-			OPCYCLE(RES(1, Register.c), 8);
-		case 0x8a:
-			OPCYCLE(RES(1, Register.d), 8);
-		case 0x8b:
-			OPCYCLE(RES(1, Register.e), 8);
-		case 0x8c:
-			OPCYCLE(RES(1, Register.h), 8);
-		case 0x8d:
-			OPCYCLE(RES(1, Register.l), 8);
-		case 0x8e:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			RES(1, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0x8f:
-			OPCYCLE(RES(1, Register.a), 8);
-		case 0x90:
-			OPCYCLE(RES(2, Register.b), 8);
-		case 0x91:
-			OPCYCLE(RES(2, Register.c), 8);
-		case 0x92:
-			OPCYCLE(RES(2, Register.d), 8);
-		case 0x93:
-			OPCYCLE(RES(2, Register.e), 8);
-		case 0x94:
-			OPCYCLE(RES(2, Register.h), 8);
-		case 0x95:
-			OPCYCLE(RES(2, Register.l), 8);
-		case 0x96:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			RES(2, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0x97:
-			OPCYCLE(RES(2, Register.a), 8);
-		case 0x98:
-			OPCYCLE(RES(3, Register.b), 8);
-		case 0x99:
-			OPCYCLE(RES(3, Register.c), 8);
-		case 0x9a:
-			OPCYCLE(RES(3, Register.d), 8);
-		case 0x9b:
-			OPCYCLE(RES(3, Register.e), 8);
-		case 0x9c:
-			OPCYCLE(RES(3, Register.h), 8);
-		case 0x9d:
-			OPCYCLE(RES(3, Register.l), 8);
-		case 0x9e:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			RES(3, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0x9f:
-			OPCYCLE(RES(3, Register.a), 8);
-		case 0xa0:
-			OPCYCLE(RES(4, Register.b), 8);
-		case 0xa1:
-			OPCYCLE(RES(4, Register.c), 8);
-		case 0xa2:
-			OPCYCLE(RES(4, Register.d), 8);
-		case 0xa3:
-			OPCYCLE(RES(4, Register.e), 8);
-		case 0xa4:
-			OPCYCLE(RES(4, Register.h), 8);
-		case 0xa5:
-			OPCYCLE(RES(4, Register.l), 8);
-		case 0xa6:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			RES(4, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0xa7:
-			OPCYCLE(RES(4, Register.a), 8);
-		case 0xa8:
-			OPCYCLE(RES(5, Register.b), 8);
-		case 0xa9:
-			OPCYCLE(RES(5, Register.c), 8);
-		case 0xaa:
-			OPCYCLE(RES(5, Register.d), 8);
-		case 0xab:
-			OPCYCLE(RES(5, Register.e), 8);
-		case 0xac:
-			OPCYCLE(RES(5, Register.h), 8);
-		case 0xad:
-			OPCYCLE(RES(5, Register.l), 8);
-		case 0xae:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			RES(5, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0xaf:
-			OPCYCLE(RES(5, Register.a), 8);
-		case 0xb0:
-			OPCYCLE(RES(6, Register.b), 8);
-		case 0xb1:
-			OPCYCLE(RES(6, Register.c), 8);
-		case 0xb2:
-			OPCYCLE(RES(6, Register.d), 8);
-		case 0xb3:
-			OPCYCLE(RES(6, Register.e), 8);
-		case 0xb4:
-			OPCYCLE(RES(6, Register.h), 8);
-		case 0xb5:
-			OPCYCLE(RES(6, Register.l), 8);
-		case 0xb6:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			RES(6, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0xb7:
-			OPCYCLE(RES(6, Register.a), 8);
-		case 0xb8:
-			OPCYCLE(RES(7, Register.b), 8);
-		case 0xb9:
-			OPCYCLE(RES(7, Register.c), 8);
-		case 0xba:
-			OPCYCLE(RES(7, Register.d), 8);
-		case 0xbb:
-			OPCYCLE(RES(7, Register.e), 8);
-		case 0xbc:
-			OPCYCLE(RES(7, Register.h), 8);
-		case 0xbd:
-			OPCYCLE(RES(7, Register.l), 8);
-		case 0xbe:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			RES(7, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0xbf:
-			OPCYCLE(RES(7, Register.a), 8);
-
-		case 0xc0:
-			OPCYCLE(SET(0, Register.b), 8);
-		case 0xc1:
-			OPCYCLE(SET(0, Register.c), 8);
-		case 0xc2:
-			OPCYCLE(SET(0, Register.d), 8);
-		case 0xc3:
-			OPCYCLE(SET(0, Register.e), 8);
-		case 0xc4:
-			OPCYCLE(SET(0, Register.h), 8);
-		case 0xc5:
-			OPCYCLE(SET(0, Register.l), 8);
-		case 0xc6:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			SET(0, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0xc7:
-			OPCYCLE(SET(0, Register.a), 8);
-		case 0xc8:
-			OPCYCLE(SET(1, Register.b), 8);
-		case 0xc9:
-			OPCYCLE(SET(1, Register.c), 8);
-		case 0xca:
-			OPCYCLE(SET(1, Register.d), 8);
-		case 0xcb:
-			OPCYCLE(SET(1, Register.e), 8);
-		case 0xcc:
-			OPCYCLE(SET(1, Register.h), 8);
-		case 0xcd:
-			OPCYCLE(SET(1, Register.l), 8);
-		case 0xce:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			SET(1, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0xcf:
-			OPCYCLE(SET(1, Register.a), 8);
-		case 0xd0:
-			OPCYCLE(SET(2, Register.b), 8);
-		case 0xd1:
-			OPCYCLE(SET(2, Register.c), 8);
-		case 0xd2:
-			OPCYCLE(SET(2, Register.d), 8);
-		case 0xd3:
-			OPCYCLE(SET(2, Register.e), 8);
-		case 0xd4:
-			OPCYCLE(SET(2, Register.h), 8);
-		case 0xd5:
-			OPCYCLE(SET(2, Register.l), 8);
-		case 0xd6:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			SET(2, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0xd7:
-			OPCYCLE(SET(2, Register.a), 8);
-		case 0xd8:
-			OPCYCLE(SET(3, Register.b), 8);
-		case 0xd9:
-			OPCYCLE(SET(3, Register.c), 8);
-		case 0xda:
-			OPCYCLE(SET(3, Register.d), 8);
-		case 0xdb:
-			OPCYCLE(SET(3, Register.e), 8);
-		case 0xdc:
-			OPCYCLE(SET(3, Register.h), 8);
-		case 0xdd:
-			OPCYCLE(SET(3, Register.l), 8);
-		case 0xde:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			SET(3, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0xdf:
-			OPCYCLE(SET(3, Register.a), 8);
-		case 0xe0:
-			OPCYCLE(SET(4, Register.b), 8);
-		case 0xe1:
-			OPCYCLE(SET(4, Register.c), 8);
-		case 0xe2:
-			OPCYCLE(SET(4, Register.d), 8);
-		case 0xe3:
-			OPCYCLE(SET(4, Register.e), 8);
-		case 0xe4:
-			OPCYCLE(SET(4, Register.h), 8);
-		case 0xe5:
-			OPCYCLE(SET(4, Register.l), 8);
-		case 0xe6:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			SET(4, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0xe7:
-			OPCYCLE(SET(4, Register.a), 8);
-		case 0xe8:
-			OPCYCLE(SET(5, Register.b), 8);
-		case 0xe9:
-			OPCYCLE(SET(5, Register.c), 8);
-		case 0xea:
-			OPCYCLE(SET(5, Register.d), 8);
-		case 0xeb:
-			OPCYCLE(SET(5, Register.e), 8);
-		case 0xec:
-			OPCYCLE(SET(5, Register.h), 8);
-		case 0xed:
-			OPCYCLE(SET(5, Register.l), 8);
-		case 0xee:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			SET(5, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0xef:
-			OPCYCLE(SET(5, Register.a), 8);
-		case 0xf0:
-			OPCYCLE(SET(6, Register.b), 8);
-		case 0xf1:
-			OPCYCLE(SET(6, Register.c), 8);
-		case 0xf2:
-			OPCYCLE(SET(6, Register.d), 8);
-		case 0xf3:
-			OPCYCLE(SET(6, Register.e), 8);
-		case 0xf4:
-			OPCYCLE(SET(6, Register.h), 8);
-		case 0xf5:
-			OPCYCLE(SET(6, Register.l), 8);
-		case 0xf6:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			SET(6, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0xf7:
-			OPCYCLE(SET(6, Register.a), 8);
-		case 0xf8:
-			OPCYCLE(SET(7, Register.b), 8);
-		case 0xf9:
-			OPCYCLE(SET(7, Register.c), 8);
+			OPCYCLE(DAA(), 4);
+	#pragma endregion
+	#pragma region Loads
+		case 0x2a:
+			OPCYCLE((LD(Register.a, Gameboy.ReadMemory(Register.hl())), Register.hl(Register.hl() + 1)), 8);
+		case 0x3a:
+			OPCYCLE((LD(Register.a, Gameboy.ReadMemory(Register.hl())), Register.hl(Register.hl() - 1)), 8);
 		case 0xfa:
-			OPCYCLE(SET(7, Register.d), 8);
-		case 0xfb:
-			OPCYCLE(SET(7, Register.e), 8);
-		case 0xfc:
-			OPCYCLE(SET(7, Register.h), 8);
-		case 0xfd:
-			OPCYCLE(SET(7, Register.l), 8);
-		case 0xfe:
-		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			SET(7, hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
-			break;
-		}
-		case 0xff:
-			OPCYCLE(SET(7, Register.a), 8);
-#pragma endregion
-#pragma region MISC
-		case 0x30:
-			OPCYCLE(SWAP(Register.b), 8);
-		case 0x31:
-			OPCYCLE(SWAP(Register.c), 8);
+			OPCYCLE(LD(Register.a, Gameboy.ReadMemory(Gameboy.ReadMemoryWord(Register.pc))), 16);
+		case 0x22:
+			OPCYCLE((LD(Register.hl(), Register.a), Register.hl(Register.hl() + 1)), 8);
 		case 0x32:
-			OPCYCLE(SWAP(Register.d), 8);
-		case 0x33:
-			OPCYCLE(SWAP(Register.e), 8);
-		case 0x34:
-			OPCYCLE(SWAP(Register.h), 8);
-		case 0x35:
-			OPCYCLE(SWAP(Register.l), 8);
+			OPCYCLE((LD(Register.hl(), Register.a), Register.hl(Register.hl() - 1)), 8);
 		case 0x36:
+			OPCYCLE(LD(Register.hl(), Gameboy.ReadMemory(Register.pc++)), 12);
+		case 0xea:
 		{
-			uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
-			SWAP(hlDeRef);
-			Gameboy.WriteMemory(Register.hl(), hlDeRef);
-			cycles = 16;
+			const uint16_t adrs{ Gameboy.ReadMemoryWord(Register.pc) };
+			OPCYCLE(LD(adrs, Register.a), 16);
+		}
+		case 0x08:
+		{
+			Gameboy.WriteMemoryWord(Gameboy.ReadMemoryWord(Register.pc), Register.sp);
+			cycles = 20;
 			break;
 		}
+		case 0x31:
+			OPCYCLE(LD(&Register.sp, Gameboy.ReadMemoryWord(Register.pc)), 12);
+		case 0xf9:
+			OPCYCLE(LD(&Register.sp, Register.hl()), 8);
+		case 0x02:
+			OPCYCLE(LD(Register.bc(), Register.a), 8);
+		case 0x12:
+			OPCYCLE(LD(Register.de(), Register.a), 8);
+		case 0x06:
+			OPCYCLE(LD(Register.b, Gameboy.ReadMemory(Register.pc++)), 8);
+		case 0x11:
+		{
+			uint16_t temp{ Register.de() };
+			LD(&temp, Gameboy.ReadMemoryWord(Register.pc));
+			cycles = 12;
+			Register.de(temp);
+			break;
+		}
+		case 0x01:
+		{
+			uint16_t temp{ Register.bc() };
+			LD(&temp, Gameboy.ReadMemoryWord(Register.pc));
+			cycles = 12;
+			Register.bc(temp);
+			break;
+		}
+		case 0x21:
+		{
+			uint16_t temp{ Register.hl() };
+			LD(&temp, Gameboy.ReadMemoryWord(Register.pc));
+			cycles = 12;
+			Register.hl(temp);
+			break;
+		}
+		case 0xf8:
+		{
+			uint16_t temp{ Register.hl() };
+			LD(&temp, Register.sp + (int8_t)Gameboy.ReadMemory(Register.pc++));
+			cycles = 12; //CodeSlinger:0
+			Register.hl(temp);
+			break;
+		}
+		case 0x0a:
+			OPCYCLE(LD(Register.a, Gameboy.ReadMemory(Register.bc())), 8);
+		case 0x0e:
+			OPCYCLE(LD(Register.c, Gameboy.ReadMemory(Register.pc++)), 8);
+		case 0x16:
+			OPCYCLE(LD(Register.d, Gameboy.ReadMemory(Register.pc++)), 8);
+		case 0x1a:
+			OPCYCLE(LD(Register.a, Gameboy.ReadMemory(Register.de())), 8);
+		case 0x1e:
+			OPCYCLE(LD(Register.e, Gameboy.ReadMemory(Register.pc++)), 8);
+		case 0x26:
+			OPCYCLE(LD(Register.h, Gameboy.ReadMemory(Register.pc++)), 8);
+		case 0x2e:
+			OPCYCLE(LD(Register.l, Gameboy.ReadMemory(Register.pc++)), 8);
+		case 0x3e:
+			OPCYCLE(LD(Register.a, Gameboy.ReadMemory(Register.pc++)), 8);
+		case 0x40:
+			OPCYCLE(LD(Register.b, Register.b), 4);
+		case 0x41:
+			OPCYCLE(LD(Register.b, Register.c), 4);
+		case 0x42:
+			OPCYCLE(LD(Register.b, Register.d), 4);
+		case 0x43:
+			OPCYCLE(LD(Register.b, Register.e), 4);
+		case 0x44:
+			OPCYCLE(LD(Register.b, Register.h), 4);
+		case 0x45:
+			OPCYCLE(LD(Register.b, Register.l), 4);
+		case 0x46:
+			OPCYCLE(LD(Register.b, Gameboy.ReadMemory(Register.hl())), 8);
+		case 0x47:
+			OPCYCLE(LD(Register.b, Register.a), 4);
+		case 0x48:
+			OPCYCLE(LD(Register.c, Register.b), 4);
+		case 0x49:
+			OPCYCLE(LD(Register.c, Register.c), 4);
+		case 0x4a:
+			OPCYCLE(LD(Register.c, Register.d), 4);
+		case 0x4b:
+			OPCYCLE(LD(Register.c, Register.e), 4);
+		case 0x4c:
+			OPCYCLE(LD(Register.c, Register.h), 4);
+		case 0x4d:
+			OPCYCLE(LD(Register.c, Register.l), 4);
+		case 0x4e:
+			OPCYCLE(LD(Register.c, Gameboy.ReadMemory(Register.hl())), 8);
+		case 0x4f:
+			OPCYCLE(LD(Register.c, Register.a), 4);
+		case 0x50:
+			OPCYCLE(LD(Register.d, Register.b), 4);
+		case 0x51:
+			OPCYCLE(LD(Register.d, Register.c), 4);
+		case 0x52:
+			OPCYCLE(LD(Register.d, Register.d), 4);
+		case 0x53:
+			OPCYCLE(LD(Register.d, Register.e), 4);
+		case 0x54:
+			OPCYCLE(LD(Register.d, Register.h), 4);
+		case 0x55:
+			OPCYCLE(LD(Register.d, Register.l), 4);
+		case 0x56:
+			OPCYCLE(LD(Register.d, Gameboy.ReadMemory(Register.hl())), 8);
+		case 0x57:
+			OPCYCLE(LD(Register.d, Register.a), 4);
+		case 0x58:
+			OPCYCLE(LD(Register.e, Register.b), 4);
+		case 0x59:
+			OPCYCLE(LD(Register.e, Register.c), 4);
+		case 0x5a:
+			OPCYCLE(LD(Register.e, Register.d), 4);
+		case 0x5b:
+			OPCYCLE(LD(Register.e, Register.e), 4);
+		case 0x5c:
+			OPCYCLE(LD(Register.e, Register.h), 4);
+		case 0x5d:
+			OPCYCLE(LD(Register.e, Register.l), 4);
+		case 0x5e:
+			OPCYCLE(LD(Register.e, Gameboy.ReadMemory(Register.hl())), 8);
+		case 0x5f:
+			OPCYCLE(LD(Register.e, Register.a), 4);
+		case 0x60:
+			OPCYCLE(LD(Register.h, Register.b), 4);
+		case 0x61:
+			OPCYCLE(LD(Register.h, Register.c), 4);
+		case 0x62:
+			OPCYCLE(LD(Register.h, Register.d), 4);
+		case 0x63:
+			OPCYCLE(LD(Register.h, Register.e), 4);
+		case 0x64:
+			OPCYCLE(LD(Register.h, Register.h), 4);
+		case 0x65:
+			OPCYCLE(LD(Register.h, Register.l), 4);
+		case 0x66:
+			OPCYCLE(LD(Register.h, Gameboy.ReadMemory(Register.hl())), 8);
+		case 0x67:
+			OPCYCLE(LD(Register.h, Register.a), 4);
+		case 0x68:
+			OPCYCLE(LD(Register.l, Register.b), 4);
+		case 0x69:
+			OPCYCLE(LD(Register.l, Register.c), 4);
+		case 0x6a:
+			OPCYCLE(LD(Register.l, Register.d), 4);
+		case 0x6b:
+			OPCYCLE(LD(Register.l, Register.e), 4);
+		case 0x6c:
+			OPCYCLE(LD(Register.l, Register.h), 4);
+		case 0x6d:
+			OPCYCLE(LD(Register.l, Register.l), 4);
+		case 0x6e:
+			OPCYCLE(LD(Register.l, Gameboy.ReadMemory(Register.hl())), 8);
+		case 0x6f:
+			OPCYCLE(LD(Register.l, Register.a), 4);
+		case 0x78:
+			OPCYCLE(LD(Register.a, Register.b), 4);
+		case 0x79:
+			OPCYCLE(LD(Register.a, Register.c), 4);
+		case 0x7a:
+			OPCYCLE(LD(Register.a, Register.d), 4);
+		case 0x7b:
+			OPCYCLE(LD(Register.a, Register.e), 4);
+		case 0x7c:
+			OPCYCLE(LD(Register.a, Register.h), 4);
+		case 0x7d:
+			OPCYCLE(LD(Register.a, Register.l), 4);
+		case 0x7e:
+			OPCYCLE(LD(Register.a, Gameboy.ReadMemory(Register.hl())), 8);
+		case 0x7f:
+			OPCYCLE(LD(Register.a, Register.a), 4);
+		case 0xf2:
+			OPCYCLE(LD(Register.a, Gameboy.ReadMemory(0xFF00 + Register.c)), 8); //ok acc to gb manual
+		case 0x70:
+			OPCYCLE(LD(Register.hl(), Register.b), 8);
+		case 0x71:
+			OPCYCLE(LD(Register.hl(), Register.c), 8);
+		case 0x72:
+			OPCYCLE(LD(Register.hl(), Register.d), 8);
+		case 0x73:
+			OPCYCLE(LD(Register.hl(), Register.e), 8);
+		case 0x74:
+			OPCYCLE(LD(Register.hl(), Register.h), 8);
+		case 0x75:
+			OPCYCLE(LD(Register.hl(), Register.l), 8);
+		case 0x77:
+			OPCYCLE(LD(Register.hl(), Register.a), 8);
+		case 0xe2:
+			OPCYCLE(LD(static_cast<uint16_t>(0xFF00 + Register.c), Register.a), 8);
+		case 0xE0:
+			OPCYCLE(LD(static_cast<uint16_t>(0xFF00 + Gameboy.ReadMemory(Register.pc++)), Register.a), 12);
+		case 0xF0:
+		{
+			//if(Register.pc==10667) __debugbreak();
+			const uint8_t val{ Gameboy.ReadMemory(Register.pc++) };
+			OPCYCLE(LD(Register.a, Gameboy.ReadMemory(static_cast<uint16_t>(0xFF00 + val))), 12);
+		}
+	
+		case 0xC1:
+		{
+			uint16_t temp;
+			POP(temp);
+			Register.bc(temp);
+			cycles = 12;
+			break;
+		}
+		case 0xD1:
+		{
+			uint16_t temp;
+			POP(temp);
+			Register.de(temp);
+			cycles = 12;
+			break;
+		}
+		case 0xE1:
+		{
+			uint16_t temp;
+			POP(temp);
+			Register.hl(temp);
+			cycles = 12;
+			break;
+		}
+		case 0xF1:
+		{
+			uint16_t temp;
+			POP(temp);
+			Register.af(temp);
+			cycles = 12;
+			break;
+		}
+	
+		case 0xC5:
+			OPCYCLE(PUSH(Register.bc()), 16);
+		case 0xD5:
+			OPCYCLE(PUSH(Register.de()), 16);
+		case 0xE5:
+			OPCYCLE(PUSH(Register.hl()), 16);
+		case 0xF5:
+			OPCYCLE(PUSH(Register.af()), 16);
+	
+	#pragma endregion
+	#pragma region Rotates and Shifts
+		case 0x07:
+			/*
+			Rotate the contents of register A to the left.
+			That is, the contents of bit 0 are copied to bit 1,
+			and the previous contents of bit 1 (before the copy operation) are copied to bit 2.
+			The same operation is repeated in sequence for the rest of the register.
+			The contents of bit 7 are placed in both the CY flag and bit 0 of register A.
+			*/
+			OPCYCLE(RLC(Register.a), 4); //Codeslinger: 8
+			break;
+		//case 0x0F:
+		//	/*
+		//	Rotate the contents of register A to the right.
+		//	That is, the contents of bit 7 are copied to bit 6,
+		//	and the previous contents of bit 6 (before the copy) are copied to bit 5.
+		//	The same operation is repeated in sequence for the rest of the register.
+		//	The contents of bit 0 are placed in both the CY flag and bit 7 of register A.
+		//	*/
+		//	OPCYCLE(RRC(Register.a), 4); //Codeslinger: 8
+	
+		//case 0x17:
+		//	/*
+		//	Rotate the contents of register A to the right, through the carry (CY) flag.
+		//	That is, the contents of bit 7 are copied to bit 6,
+		//	and the previous contents of bit 6 (before the copy) are copied to bit 5.
+		//	The same operation is repeated in sequence for the rest of the register.
+		//	The previous contents of the carry flag are copied to bit 7.
+		//	*/
+		//	OPCYCLE(RL(Register.a), 4); //Codeslinger: 8
+	
+		case 0x1F:
+			/*
+			Rotate the contents of register A to the right, through the carry (CY) flag.
+			That is, the contents of bit 7 are copied to bit 6,
+			and the previous contents of bit 6 (before the copy) are copied to bit 5.
+			The same operation is repeated in sequence for the rest of the register.
+			The previous contents of the carry flag are copied to bit 7.
+			*/
+			OPCYCLE(RR(Register.a), 4); //Codeslinger: 8
+	
+	#pragma endregion
+	#pragma region Misc
+		case 0x2F:
+			OPCYCLE(CPL(), 4);
+		case 0x3F:
+			OPCYCLE(CCF(), 4);
 		case 0x37:
-			OPCYCLE(SWAP(Register.a), 8);
-#pragma endregion
-#ifdef _DEBUG
+			OPCYCLE(SCF(), 4);
+		case 0x10:
+			OPCYCLE(STOP(), 4);
+		case 0x76:
+			OPCYCLE(HALT(), 4);
+		case 0xF3:
+			OPCYCLE(DI(), 4);
+		case 0xFB:
+			OPCYCLE(EI(), 4);
+	#pragma endregion
+	#pragma region Calls n Jumps
+		case 0xC4:
+			OPCYCLE(CALL(Gameboy.ReadMemoryWord(Register.pc), !Register.zeroF), 0);
+		case 0xD4:
+			OPCYCLE(CALL(Gameboy.ReadMemoryWord(Register.pc), !Register.carryF), 0);
+		case 0xCC:
+			OPCYCLE(CALL(Gameboy.ReadMemoryWord(Register.pc), Register.zeroF), 0);
+		case 0xDC:
+			OPCYCLE(CALL(Gameboy.ReadMemoryWord(Register.pc), Register.carryF), 0);
+		case 0xCD:
+			OPCYCLE(CALL(Gameboy.ReadMemoryWord(Register.pc), true), 0);;
+		case 0xC2:
+			OPCYCLE(JP(Gameboy.ReadMemoryWord(Register.pc), !Register.zeroF), 0);
+		case 0xD2:
+			OPCYCLE(JP(Gameboy.ReadMemoryWord(Register.pc), !Register.carryF), 0);
+		case 0xC3:
+			OPCYCLE(JP(Gameboy.ReadMemoryWord(Register.pc), true), 0);
+		case 0xE9:
+			OPCYCLE(JP(Register.hl(), true, false), 4);
+		case 0xCA:
+			OPCYCLE(JP(Gameboy.ReadMemoryWord(Register.pc), Register.zeroF), 0);
+		case 0xDA:
+			OPCYCLE(JP(Gameboy.ReadMemoryWord(Register.pc), Register.carryF), 0);;
+		case 0x20:
+			OPCYCLE(JR(Gameboy.ReadMemory(Register.pc++), !Register.zeroF), 0);
+		case 0x30:
+			OPCYCLE(JR(Gameboy.ReadMemory(Register.pc++), !Register.carryF), 0);
+		case 0x18:
+			OPCYCLE(JR(Gameboy.ReadMemory(Register.pc++), true), 0);
+		case 0x28:
+			OPCYCLE(JR(Gameboy.ReadMemory(Register.pc++), Register.zeroF), 0);
+		case 0x38:
+			OPCYCLE(JR(Gameboy.ReadMemory(Register.pc++), Register.carryF), 0);
+	
+		case 0xC0:
+			OPCYCLE(RET(!Register.zeroF), 0);
+		case 0xD0:
+			OPCYCLE(RET(!Register.carryF), 0);
+		case 0xC8:
+			OPCYCLE(RET(Register.zeroF), 0);
+		case 0xD8:
+			OPCYCLE(RET(Register.carryF), 0);
+		case 0xC9:
+			OPCYCLE(RET(true, false), 16); //CodeSlinger:8
+		case 0xD9:
+			OPCYCLE(RETI(), 16); //CodeSlinger:8
+	
+		case 0xC7:
+			OPCYCLE(RST(0x0), 16); //CodeSlinger:32 (all)
+		case 0xD7:
+			OPCYCLE(RST(0x10), 16);
+		case 0xE7:
+			OPCYCLE(RST(0x20), 16);
+		case 0xF7:
+			OPCYCLE(RST(0x30), 16);
+		case 0xCF:
+			OPCYCLE(RST(0x08), 16);
+		case 0xDF:
+			OPCYCLE(RST(0x18), 16);
+		case 0xEF:
+			OPCYCLE(RST(0x28), 16);
+		case 0xFF:
+			OPCYCLE(RST(0x38), 16);
+	#pragma endregion
+	
+	#pragma region Extended Opcodes
+		case 0xCB:
+			opcode = Gameboy.ReadMemory(Register.pc++);
+			switch (opcode)
+			{
+	#pragma region Rotates and Shifts
+			case 0x18:
+				OPCYCLE(RR(Register.b), 8);
+			case 0x19:
+				OPCYCLE(RR(Register.c), 8);
+			case 0x1A:
+				OPCYCLE(RR(Register.d), 8);
+			case 0x1B:
+				OPCYCLE(RR(Register.e), 8);
+			case 0x1C:
+				OPCYCLE(RR(Register.h), 8);
+			case 0x1D:
+				OPCYCLE(RR(Register.l), 8);
+			case 0x1E:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				RR(hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0x1F:
+				OPCYCLE(RR(Register.a), 8);
+			case 0x20:
+				OPCYCLE(SLA(Register.b), 8);
+			case 0x21:
+				OPCYCLE(SLA(Register.c), 8);
+			case 0x22:
+				OPCYCLE(SLA(Register.d), 8);
+			case 0x23:
+				OPCYCLE(SLA(Register.e), 8);
+			case 0x24:
+				OPCYCLE(SLA(Register.h), 8);
+			case 0x25:
+				OPCYCLE(SLA(Register.l), 8);
+			case 0x26:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				SLA(hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0x27:
+				OPCYCLE(SLA(Register.a), 8);
+			case 0x38:
+				OPCYCLE(SRL(Register.b), 8);
+			case 0x39:
+				OPCYCLE(SRL(Register.c), 8);
+			case 0x3A:
+				OPCYCLE(SRL(Register.d), 8);
+			case 0x3B:
+				OPCYCLE(SRL(Register.e), 8);
+			case 0x3C:
+				OPCYCLE(SRL(Register.h), 8);
+			case 0x3D:
+				OPCYCLE(SRL(Register.l), 8);
+			case 0x3E:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				SRL(hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0x3F:
+				OPCYCLE(SRL(Register.a), 8);
+			case 0x00:
+				OPCYCLE(RLC(Register.b), 8);
+			case 0x01:
+				OPCYCLE(RLC(Register.c), 8);
+			case 0x02:
+				OPCYCLE(RLC(Register.d), 8);
+			case 0x03:
+				OPCYCLE(RLC(Register.e), 8);
+			case 0x04:
+				OPCYCLE(RLC(Register.h), 8);
+			case 0x05:
+				OPCYCLE(RLC(Register.l), 8);
+			case 0x06:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				RLC(hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0x07:
+				OPCYCLE(RLC(Register.a), 8);
+	#pragma endregion
+	#pragma region Bits
+			case 0x40:
+				OPCYCLE(BITop(0, Register.b), 8);
+			case 0x41:
+				OPCYCLE(BITop(0, Register.c), 8);
+			case 0x42:
+				OPCYCLE(BITop(0, Register.d), 8);
+			case 0x43:
+				OPCYCLE(BITop(0, Register.e), 8);
+			case 0x44:
+				OPCYCLE(BITop(0, Register.h), 8);
+			case 0x45:
+				OPCYCLE(BITop(0, Register.l), 8);
+			case 0x46:
+			{
+				BITop(0, Gameboy.ReadMemory(Register.hl()));
+				cycles = 16;
+				break;
+			}
+			case 0x47:
+				OPCYCLE(BITop(0, Register.a), 8);
+			case 0x48:
+				OPCYCLE(BITop(1, Register.b), 8);
+			case 0x49:
+				OPCYCLE(BITop(1, Register.c), 8);
+			case 0x4a:
+				OPCYCLE(BITop(1, Register.d), 8);
+			case 0x4b:
+				OPCYCLE(BITop(1, Register.e), 8);
+			case 0x4c:
+				OPCYCLE(BITop(1, Register.h), 8);
+			case 0x4d:
+				OPCYCLE(BITop(1, Register.l), 8);
+			case 0x4e:
+			{
+				BITop(1, Gameboy.ReadMemory(Register.hl()));
+				cycles = 16;
+				break;
+			}
+			case 0x4f:
+				OPCYCLE(BITop(1, Register.a), 8);
+			case 0x50:
+				OPCYCLE(BITop(2, Register.b), 8);
+			case 0x51:
+				OPCYCLE(BITop(2, Register.c), 8);
+			case 0x52:
+				OPCYCLE(BITop(2, Register.d), 8);
+			case 0x53:
+				OPCYCLE(BITop(2, Register.e), 8);
+			case 0x54:
+				OPCYCLE(BITop(2, Register.h), 8);
+			case 0x55:
+				OPCYCLE(BITop(2, Register.l), 8);
+			case 0x56:
+			{
+				BITop(2, Gameboy.ReadMemory(Register.hl()));
+				cycles = 16;
+				break;
+			}
+			case 0x57:
+				OPCYCLE(BITop(2, Register.a), 8);
+			case 0x58:
+				OPCYCLE(BITop(3, Register.b), 8);
+			case 0x59:
+				OPCYCLE(BITop(3, Register.c), 8);
+			case 0x5a:
+				OPCYCLE(BITop(3, Register.d), 8);
+			case 0x5b:
+				OPCYCLE(BITop(3, Register.e), 8);
+			case 0x5c:
+				OPCYCLE(BITop(3, Register.h), 8);
+			case 0x5d:
+				OPCYCLE(BITop(3, Register.l), 8);
+			case 0x5e:
+			{
+				BITop(3, Gameboy.ReadMemory(Register.hl()));
+				cycles = 16;
+				break;
+			}
+			case 0x5f:
+				OPCYCLE(BITop(3, Register.a), 8);
+			case 0x60:
+				OPCYCLE(BITop(4, Register.b), 8);
+			case 0x61:
+				OPCYCLE(BITop(4, Register.c), 8);
+			case 0x62:
+				OPCYCLE(BITop(4, Register.d), 8);
+			case 0x63:
+				OPCYCLE(BITop(4, Register.e), 8);
+			case 0x64:
+				OPCYCLE(BITop(4, Register.h), 8);
+			case 0x65:
+				OPCYCLE(BITop(4, Register.l), 8);
+			case 0x66:
+			{
+				BITop(4, Gameboy.ReadMemory(Register.hl()));
+				cycles = 16;
+				break;
+			}
+			case 0x67:
+				OPCYCLE(BITop(4, Register.a), 8);
+			case 0x68:
+				OPCYCLE(BITop(5, Register.b), 8);
+			case 0x69:
+				OPCYCLE(BITop(5, Register.c), 8);
+			case 0x6a:
+				OPCYCLE(BITop(5, Register.d), 8);
+			case 0x6b:
+				OPCYCLE(BITop(5, Register.e), 8);
+			case 0x6c:
+				OPCYCLE(BITop(5, Register.h), 8);
+			case 0x6d:
+				OPCYCLE(BITop(5, Register.l), 8);
+			case 0x6e:
+			{
+				BITop(5, Gameboy.ReadMemory(Register.hl()));
+				cycles = 16;
+				break;
+			}
+			case 0x6f:
+				OPCYCLE(BITop(5, Register.a), 8);
+			case 0x70:
+				OPCYCLE(BITop(6, Register.b), 8);
+			case 0x71:
+				OPCYCLE(BITop(6, Register.c), 8);
+			case 0x72:
+				OPCYCLE(BITop(6, Register.d), 8);
+			case 0x73:
+				OPCYCLE(BITop(6, Register.e), 8);
+			case 0x74:
+				OPCYCLE(BITop(6, Register.h), 8);
+			case 0x75:
+				OPCYCLE(BITop(6, Register.l), 8);
+			case 0x76:
+			{
+				BITop(6, Gameboy.ReadMemory(Register.hl()));
+				cycles = 16;
+				break;
+			}
+			case 0x77:
+				OPCYCLE(BITop(6, Register.a), 8);
+			case 0x78:
+				OPCYCLE(BITop(7, Register.b), 8);
+			case 0x79:
+				OPCYCLE(BITop(7, Register.c), 8);
+			case 0x7a:
+				OPCYCLE(BITop(7, Register.d), 8);
+			case 0x7b:
+				OPCYCLE(BITop(7, Register.e), 8);
+			case 0x7c:
+				OPCYCLE(BITop(7, Register.h), 8);
+			case 0x7d:
+				OPCYCLE(BITop(7, Register.l), 8);
+			case 0x7e:
+			{
+				BITop(7, Gameboy.ReadMemory(Register.hl()));
+				cycles = 16;
+				break;
+			}
+			case 0x7f:
+				OPCYCLE(BITop(7, Register.a), 8);
+	
+			case 0x80:
+				OPCYCLE(RES(0, Register.b), 8);
+			case 0x81:
+				OPCYCLE(RES(0, Register.c), 8);
+			case 0x82:
+				OPCYCLE(RES(0, Register.d), 8);
+			case 0x83:
+				OPCYCLE(RES(0, Register.e), 8);
+			case 0x84:
+				OPCYCLE(RES(0, Register.h), 8);
+			case 0x85:
+				OPCYCLE(RES(0, Register.l), 8);
+			case 0x86:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				RES(0, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0x87:
+				OPCYCLE(RES(0, Register.a), 8);
+			case 0x88:
+				OPCYCLE(RES(1, Register.b), 8);
+			case 0x89:
+				OPCYCLE(RES(1, Register.c), 8);
+			case 0x8a:
+				OPCYCLE(RES(1, Register.d), 8);
+			case 0x8b:
+				OPCYCLE(RES(1, Register.e), 8);
+			case 0x8c:
+				OPCYCLE(RES(1, Register.h), 8);
+			case 0x8d:
+				OPCYCLE(RES(1, Register.l), 8);
+			case 0x8e:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				RES(1, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0x8f:
+				OPCYCLE(RES(1, Register.a), 8);
+			case 0x90:
+				OPCYCLE(RES(2, Register.b), 8);
+			case 0x91:
+				OPCYCLE(RES(2, Register.c), 8);
+			case 0x92:
+				OPCYCLE(RES(2, Register.d), 8);
+			case 0x93:
+				OPCYCLE(RES(2, Register.e), 8);
+			case 0x94:
+				OPCYCLE(RES(2, Register.h), 8);
+			case 0x95:
+				OPCYCLE(RES(2, Register.l), 8);
+			case 0x96:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				RES(2, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0x97:
+				OPCYCLE(RES(2, Register.a), 8);
+			case 0x98:
+				OPCYCLE(RES(3, Register.b), 8);
+			case 0x99:
+				OPCYCLE(RES(3, Register.c), 8);
+			case 0x9a:
+				OPCYCLE(RES(3, Register.d), 8);
+			case 0x9b:
+				OPCYCLE(RES(3, Register.e), 8);
+			case 0x9c:
+				OPCYCLE(RES(3, Register.h), 8);
+			case 0x9d:
+				OPCYCLE(RES(3, Register.l), 8);
+			case 0x9e:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				RES(3, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0x9f:
+				OPCYCLE(RES(3, Register.a), 8);
+			case 0xa0:
+				OPCYCLE(RES(4, Register.b), 8);
+			case 0xa1:
+				OPCYCLE(RES(4, Register.c), 8);
+			case 0xa2:
+				OPCYCLE(RES(4, Register.d), 8);
+			case 0xa3:
+				OPCYCLE(RES(4, Register.e), 8);
+			case 0xa4:
+				OPCYCLE(RES(4, Register.h), 8);
+			case 0xa5:
+				OPCYCLE(RES(4, Register.l), 8);
+			case 0xa6:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				RES(4, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0xa7:
+				OPCYCLE(RES(4, Register.a), 8);
+			case 0xa8:
+				OPCYCLE(RES(5, Register.b), 8);
+			case 0xa9:
+				OPCYCLE(RES(5, Register.c), 8);
+			case 0xaa:
+				OPCYCLE(RES(5, Register.d), 8);
+			case 0xab:
+				OPCYCLE(RES(5, Register.e), 8);
+			case 0xac:
+				OPCYCLE(RES(5, Register.h), 8);
+			case 0xad:
+				OPCYCLE(RES(5, Register.l), 8);
+			case 0xae:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				RES(5, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0xaf:
+				OPCYCLE(RES(5, Register.a), 8);
+			case 0xb0:
+				OPCYCLE(RES(6, Register.b), 8);
+			case 0xb1:
+				OPCYCLE(RES(6, Register.c), 8);
+			case 0xb2:
+				OPCYCLE(RES(6, Register.d), 8);
+			case 0xb3:
+				OPCYCLE(RES(6, Register.e), 8);
+			case 0xb4:
+				OPCYCLE(RES(6, Register.h), 8);
+			case 0xb5:
+				OPCYCLE(RES(6, Register.l), 8);
+			case 0xb6:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				RES(6, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0xb7:
+				OPCYCLE(RES(6, Register.a), 8);
+			case 0xb8:
+				OPCYCLE(RES(7, Register.b), 8);
+			case 0xb9:
+				OPCYCLE(RES(7, Register.c), 8);
+			case 0xba:
+				OPCYCLE(RES(7, Register.d), 8);
+			case 0xbb:
+				OPCYCLE(RES(7, Register.e), 8);
+			case 0xbc:
+				OPCYCLE(RES(7, Register.h), 8);
+			case 0xbd:
+				OPCYCLE(RES(7, Register.l), 8);
+			case 0xbe:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				RES(7, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0xbf:
+				OPCYCLE(RES(7, Register.a), 8);
+	
+			case 0xc0:
+				OPCYCLE(SET(0, Register.b), 8);
+			case 0xc1:
+				OPCYCLE(SET(0, Register.c), 8);
+			case 0xc2:
+				OPCYCLE(SET(0, Register.d), 8);
+			case 0xc3:
+				OPCYCLE(SET(0, Register.e), 8);
+			case 0xc4:
+				OPCYCLE(SET(0, Register.h), 8);
+			case 0xc5:
+				OPCYCLE(SET(0, Register.l), 8);
+			case 0xc6:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				SET(0, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0xc7:
+				OPCYCLE(SET(0, Register.a), 8);
+			case 0xc8:
+				OPCYCLE(SET(1, Register.b), 8);
+			case 0xc9:
+				OPCYCLE(SET(1, Register.c), 8);
+			case 0xca:
+				OPCYCLE(SET(1, Register.d), 8);
+			case 0xcb:
+				OPCYCLE(SET(1, Register.e), 8);
+			case 0xcc:
+				OPCYCLE(SET(1, Register.h), 8);
+			case 0xcd:
+				OPCYCLE(SET(1, Register.l), 8);
+			case 0xce:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				SET(1, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0xcf:
+				OPCYCLE(SET(1, Register.a), 8);
+			case 0xd0:
+				OPCYCLE(SET(2, Register.b), 8);
+			case 0xd1:
+				OPCYCLE(SET(2, Register.c), 8);
+			case 0xd2:
+				OPCYCLE(SET(2, Register.d), 8);
+			case 0xd3:
+				OPCYCLE(SET(2, Register.e), 8);
+			case 0xd4:
+				OPCYCLE(SET(2, Register.h), 8);
+			case 0xd5:
+				OPCYCLE(SET(2, Register.l), 8);
+			case 0xd6:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				SET(2, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0xd7:
+				OPCYCLE(SET(2, Register.a), 8);
+			case 0xd8:
+				OPCYCLE(SET(3, Register.b), 8);
+			case 0xd9:
+				OPCYCLE(SET(3, Register.c), 8);
+			case 0xda:
+				OPCYCLE(SET(3, Register.d), 8);
+			case 0xdb:
+				OPCYCLE(SET(3, Register.e), 8);
+			case 0xdc:
+				OPCYCLE(SET(3, Register.h), 8);
+			case 0xdd:
+				OPCYCLE(SET(3, Register.l), 8);
+			case 0xde:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				SET(3, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0xdf:
+				OPCYCLE(SET(3, Register.a), 8);
+			case 0xe0:
+				OPCYCLE(SET(4, Register.b), 8);
+			case 0xe1:
+				OPCYCLE(SET(4, Register.c), 8);
+			case 0xe2:
+				OPCYCLE(SET(4, Register.d), 8);
+			case 0xe3:
+				OPCYCLE(SET(4, Register.e), 8);
+			case 0xe4:
+				OPCYCLE(SET(4, Register.h), 8);
+			case 0xe5:
+				OPCYCLE(SET(4, Register.l), 8);
+			case 0xe6:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				SET(4, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0xe7:
+				OPCYCLE(SET(4, Register.a), 8);
+			case 0xe8:
+				OPCYCLE(SET(5, Register.b), 8);
+			case 0xe9:
+				OPCYCLE(SET(5, Register.c), 8);
+			case 0xea:
+				OPCYCLE(SET(5, Register.d), 8);
+			case 0xeb:
+				OPCYCLE(SET(5, Register.e), 8);
+			case 0xec:
+				OPCYCLE(SET(5, Register.h), 8);
+			case 0xed:
+				OPCYCLE(SET(5, Register.l), 8);
+			case 0xee:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				SET(5, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0xef:
+				OPCYCLE(SET(5, Register.a), 8);
+			case 0xf0:
+				OPCYCLE(SET(6, Register.b), 8);
+			case 0xf1:
+				OPCYCLE(SET(6, Register.c), 8);
+			case 0xf2:
+				OPCYCLE(SET(6, Register.d), 8);
+			case 0xf3:
+				OPCYCLE(SET(6, Register.e), 8);
+			case 0xf4:
+				OPCYCLE(SET(6, Register.h), 8);
+			case 0xf5:
+				OPCYCLE(SET(6, Register.l), 8);
+			case 0xf6:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				SET(6, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0xf7:
+				OPCYCLE(SET(6, Register.a), 8);
+			case 0xf8:
+				OPCYCLE(SET(7, Register.b), 8);
+			case 0xf9:
+				OPCYCLE(SET(7, Register.c), 8);
+			case 0xfa:
+				OPCYCLE(SET(7, Register.d), 8);
+			case 0xfb:
+				OPCYCLE(SET(7, Register.e), 8);
+			case 0xfc:
+				OPCYCLE(SET(7, Register.h), 8);
+			case 0xfd:
+				OPCYCLE(SET(7, Register.l), 8);
+			case 0xfe:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				SET(7, hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0xff:
+				OPCYCLE(SET(7, Register.a), 8);
+	#pragma endregion
+	#pragma region MISC
+			case 0x30:
+				OPCYCLE(SWAP(Register.b), 8);
+			case 0x31:
+				OPCYCLE(SWAP(Register.c), 8);
+			case 0x32:
+				OPCYCLE(SWAP(Register.d), 8);
+			case 0x33:
+				OPCYCLE(SWAP(Register.e), 8);
+			case 0x34:
+				OPCYCLE(SWAP(Register.h), 8);
+			case 0x35:
+				OPCYCLE(SWAP(Register.l), 8);
+			case 0x36:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				SWAP(hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0x37:
+				OPCYCLE(SWAP(Register.a), 8);
+	#pragma endregion
+	#ifdef _DEBUG
+			default:
+				//assert(("Opcode with prefix 0xCB not implemented", false));
+				//assert(false);
+				break;
+	#endif
+			}
+			break;
+	#pragma endregion
+	#ifdef _DEBUG
 		default:
-			//assert(("Opcode with prefix 0xCB not implemented", false));
+			//TODO: cancel execution and write all missing opcodes to a log file.
+			//assert(("Opcode not implemented", false));
 			//assert(false);
 			break;
-#endif
+	#endif
 		}
-		break;
-#pragma endregion
-#ifdef _DEBUG
-	default:
-		//TODO: cancel execution and write all missing opcodes to a log file.
-		//assert(("Opcode not implemented", false));
-		//assert(false);
-		break;
-#endif
-	}
 
+//	uint8_t   x;
+//
+//	switch (opcode)
+//	{
+//#include "lr35902/opc_main.hxx"
+//	default:
+//
+//		break;
+//	}
 	Gameboy.AddCycles(cycles);
 
-	std::cout << "cycles this opcode took: " << std::to_string(cycles) << std::endl;
+	//std::cout << "cycles this opcode took: " << std::to_string(cycles) << std::endl;
 
 	return cycles;
 }
@@ -1775,6 +1785,8 @@ void LR35902::mycpu_init(size_t tester_instruction_mem_size, uint8_t* tester_ins
 
 		std::cout << "Initializing the CPU ..." << std::endl;
 
+		//Gameboy.InitROM();
+
 		Reset();
 	}
 }
@@ -1783,33 +1795,35 @@ void LR35902::mycpu_set_state(state* state)
 {
 	/* ... Load your CPU with state as described (e.g., registers) ... */
 
-	num_mem_accesses = state->num_mem_accesses;
-	memcpy(mem_accesses, state->mem_accesses, sizeof(state->mem_accesses));
-
 	std::cout << "Setting state of the cpu ..." << std::endl;
 
+	Gameboy.SetPaused(0);
+	InteruptsEnabled = state->interrupts_master_enabled;
+
+	Register.sp = state->SP;
+	Register.pc = state->PC;
 	Register.af(state->reg16.AF);
 	Register.bc(state->reg16.BC);
 	Register.de(state->reg16.DE);
 	Register.hl(state->reg16.HL);
 
-	Register.sp = state->SP;
-	Register.pc = state->PC;
-
-	InteruptsEnabled = state->interrupts_master_enabled;
+	num_mem_accesses = 0;
 
 	Gameboy.SetPaused(state->halted);
 }
 
 void LR35902::mycpu_get_state(state* state)
 {
-	state->num_mem_accesses = num_mem_accesses;
-	memcpy(state->mem_accesses, mem_accesses, sizeof(mem_accesses));
-
 	/* ... Copy your current CPU state into the provided struct ... */
 
 	std::cout << "Getting the current state of the CPU ..." << std::endl;
 
+	state->SP = Register.sp;
+	state->PC = Register.pc;
+	state->reg16.AF = Register.af();
+	state->reg16.BC = Register.bc();
+	state->reg16.DE = Register.de();
+	state->reg16.HL = Register.hl();
 	state->reg8.A = Register.a;
 	state->reg8.F = Register.f;
 	state->reg8.B = Register.b;
@@ -1819,18 +1833,17 @@ void LR35902::mycpu_get_state(state* state)
 	state->reg8.H = Register.h;
 	state->reg8.L = Register.l;
 
-	state->SP = Register.sp;
-	state->PC = Register.pc;
-
+	state->halted = Gameboy.GetPaused();
 	state->interrupts_master_enabled = InteruptsEnabled;
 
-	state->halted = Gameboy.GetPaused();
+	state->num_mem_accesses = num_mem_accesses;
+	memcpy(state->mem_accesses, mem_accesses, sizeof(mem_accesses));
 }
 
 int LR35902::mycpu_step(uint8_t opCode)
 {
 	std::cout << "executing an opcode" << std::endl;
-	
+
 	int cycles = 0;
 
 	cycles = ExecuteOpcode(opCode);

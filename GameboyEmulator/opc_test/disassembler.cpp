@@ -268,11 +268,11 @@ int disassemble(u8* data, std::vector<std::string>& outOpcodes)
 				break;
 			case 'R': /* 16 bit register name (double reg) */
 				temp1 = *(++mnem) - '0';
-				//mnems += string_format("%s", registers16[(opcode >> temp1) & 3]);
+				mnems += string_format("%s", registers16[(opcode >> temp1) & 3]);
 				break;
 			case 't': /* 16 bit register name (double reg) for push/pop */
 				temp1 = *(++mnem) - '0';
-				//mnems += string_format("%s", registers16[4 + ((opcode >> temp1) & 3)]);
+				mnems += string_format("%s", registers16[4 + ((opcode >> temp1) & 3)]);
 				break;
 			case 'c': /* condition flag name */
 				temp1 = *(++mnem) - '0';
@@ -280,14 +280,14 @@ int disassemble(u8* data, std::vector<std::string>& outOpcodes)
 				break;
 			case 'b': /* bit number of CB bit instruction */
 				temp1 = (opcode >> 3) & 7;
-				//mnems += string_format("%x", temp1);
+				mnems += string_format("%x", temp1);
 				break;
 			case 'P': /* RST address */
 				temp1 = ((opcode >> 3) & 7) * 8;
 				//mnems += string_format("0x%x", temp1);
 				break;
 			default:
-				//mnems += string_format("%%%c", *mnem);
+				mnems += string_format("%%%c", *mnem);
 				break;
 			}
 		}

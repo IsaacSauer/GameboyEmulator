@@ -8,12 +8,13 @@
 GameBoy::GameBoy(const std::string& gameFile)
 	: GameBoy{}
 {
-	fileName = gameFile;
 	LoadGame(gameFile);
 }
 
 void GameBoy::LoadGame(const std::string& gbFile)
 {
+	fileName = gbFile;
+
 	std::ifstream file{ gbFile, std::ios::binary };
 	assert(file.good());
 
@@ -25,6 +26,8 @@ void GameBoy::LoadGame(const std::string& gbFile)
 	file.read(reinterpret_cast<char*>(Rom.data()), size);
 
 	file.close();
+
+	Disassemble();
 
 	const GameHeader header{ ReadHeader() };
 	Mbc = header.mbc;
@@ -173,7 +176,6 @@ void GameBoy::TestCPU()
 {
 	m_TestingOpcodes = true;
 	Cpu.TestCPU();
-
 	m_TestingOpcodes = false;
 }
 

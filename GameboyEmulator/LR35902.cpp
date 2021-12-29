@@ -130,8 +130,6 @@ void LR35902::TestCPU()
 
 	tester_run(&flags, &myops);
 	std::cout << "Test Finished!\n";
-
-	Gameboy.Disassemble();
 }
 
 void LR35902::LogRequiredOpcodes()

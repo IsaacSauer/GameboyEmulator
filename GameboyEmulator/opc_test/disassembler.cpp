@@ -8,6 +8,8 @@
 #include <string>
 #include <iostream>
 #include <format>
+#include <iomanip>
+#include <sstream>
 
 typedef struct {
 	u8 mask;
@@ -123,6 +125,16 @@ std::string string_format(const std::string& format, Args ... args)
 	return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
 }
 
+template<typename T>
+std::string int_to_hex(T i)
+{
+	std::stringstream stream;
+	stream << "0x"
+		<< std::setfill('0') << std::setw(sizeof(T) * 1)
+		<< std::hex << i;
+	return stream.str();
+}
+
 int disassemble(u8* data)
 {
 	u16 pc = 0;
@@ -233,7 +245,7 @@ int disassemble(u8* data, std::vector<std::string>& outOpcodes)
 		op++;
 
 	mnem = op->mnem;
-	std::string mnems{};
+	std::string mnems{ };
 
 	u8 temp1, temp2;
 	s8 stemp;
@@ -297,7 +309,8 @@ int disassemble(u8* data, std::vector<std::string>& outOpcodes)
 		}
 		mnem++;
 	}
-	outOpcodes.push_back(std::move(mnems.c_str()));
+	mnems += "    \t" + int_to_hex(int(opcode));
+	outOpcodes.push_back(mnems);
 
 	return pc;
 }

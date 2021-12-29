@@ -130,6 +130,8 @@ void LR35902::TestCPU()
 
 	tester_run(&flags, &myops);
 	std::cout << "Test Finished!\n";
+
+	Gameboy.Disassemble();
 }
 
 void LR35902::LogRequiredOpcodes()
@@ -1804,15 +1806,24 @@ void LR35902::mycpu_set_state(state* state)
 
 	std::cout << "Setting state of the cpu ..." << std::endl;
 
-	Gameboy.SetPaused(0);
 	InteruptsEnabled = state->interrupts_master_enabled;
+
+	Register.a = state->reg8.A;
+	Register.f = state->reg8.F;
+	Register.b = state->reg8.B;
+	Register.c = state->reg8.C;
+	Register.d = state->reg8.D;
+	Register.e = state->reg8.E;
+	Register.h = state->reg8.H;
+	Register.l = state->reg8.L;
 
 	Register.sp = state->SP;
 	Register.pc = state->PC;
-	Register.af(state->reg16.AF);
-	Register.bc(state->reg16.BC);
-	Register.de(state->reg16.DE);
-	Register.hl(state->reg16.HL);
+
+	//Register.af(state->reg16.AF);
+	//Register.bc(state->reg16.BC);
+	//Register.de(state->reg16.DE);
+	//Register.hl(state->reg16.HL);
 
 	num_mem_accesses = 0;
 
@@ -1827,10 +1838,7 @@ void LR35902::mycpu_get_state(state* state)
 
 	state->SP = Register.sp;
 	state->PC = Register.pc;
-	state->reg16.AF = Register.af();
-	state->reg16.BC = Register.bc();
-	state->reg16.DE = Register.de();
-	state->reg16.HL = Register.hl();
+
 	state->reg8.A = Register.a;
 	state->reg8.F = Register.f;
 	state->reg8.B = Register.b;

@@ -33,6 +33,7 @@ public:
 
 	void InitROM();
 	void TestCPU();
+	void Disassemble();
 
 	/**
 	 * \brief Provides access to the raw memory array
@@ -117,6 +118,8 @@ public:
 
 private:
 	bool m_TestingOpcodes = false;
+	std::string fileName{};
+
 	std::vector<uint8_t> RamBanks{};
 	LR35902 Cpu{ *this };
 

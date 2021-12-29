@@ -3,10 +3,12 @@
 #include <fstream>
 #include <iostream>
 #include <time.h>
+#include "opc_test/disassembler.h"
 
 GameBoy::GameBoy(const std::string& gameFile)
 	: GameBoy{}
 {
+	fileName = gameFile;
 	LoadGame(gameFile);
 }
 
@@ -32,6 +34,8 @@ void GameBoy::LoadGame(const std::string& gbFile)
 	{
 	case 0x00:
 		if (Mbc == mbc2)
+			banksNeeded = 1; //256 bytes
+		if (Mbc == mbc1)
 			banksNeeded = 1; //256 bytes
 		break;
 	case 0x01:
@@ -169,7 +173,24 @@ void GameBoy::TestCPU()
 {
 	m_TestingOpcodes = true;
 	Cpu.TestCPU();
+
 	m_TestingOpcodes = false;
+}
+
+void GameBoy::Disassemble()
+{
+	//disassemble
+	std::vector<std::string> opcodes{};
+	for (int i{}; i < Rom.size(); ++i)
+		disassemble(Rom.data() + i, opcodes);
+	//distinct
+	std::sort(opcodes.begin(), opcodes.end());
+	opcodes.erase(std::unique(opcodes.begin(), opcodes.end()), opcodes.end());
+	//write to file
+	std::ofstream ofile{ fileName + "_opcodes.txt" };
+	for (auto code : opcodes)
+		ofile << code << '\n';
+	ofile.close();
 }
 
 uint8_t GameBoy::ReadMemory(const uint16_t pos)
@@ -212,7 +233,10 @@ uint16_t GameBoy::ReadMemoryWord(uint16_t& pos)
 void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 {
 	if (m_TestingOpcodes)
+	{
 		Cpu.mmu_write(address, data);
+		return;
+	}
 
 	if (address <= 0x1FFF) //Enable/Disable RAM
 	{
@@ -286,6 +310,7 @@ void GameBoy::WriteMemoryWord(const uint16_t pos, const uint16_t value)
 	{
 		Cpu.mmu_write(pos, value & 0xFF);
 		Cpu.mmu_write(pos + 1, value >> 8);
+		return;
 	}
 
 	WriteMemory(pos, value & 0xFF);

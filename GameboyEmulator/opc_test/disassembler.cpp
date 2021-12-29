@@ -5,22 +5,25 @@
 #include "disassembler.h"
 
 #include <stdio.h>
+#include <string>
+#include <iostream>
+#include <format>
 
 typedef struct {
-  u8 mask;
-  u8 value;
-  const char *mnem;
+	u8 mask;
+	u8 value;
+	const char* mnem;
 } GBOPCODE;
 
-static const char *registers[] =
-  { "B", "C", "D", "E", "H", "L", "(HL)", "A" };
+static const char* registers[] =
+{ "B", "C", "D", "E", "H", "L", "(HL)", "A" };
 
-static const char *registers16[] =
-  { "BC", "DE", "HL", "SP", /* for some operations */
-    "BC", "DE", "HL", "AF" }; /* for push/pop */
+static const char* registers16[] =
+{ "BC", "DE", "HL", "SP", /* for some operations */
+  "BC", "DE", "HL", "AF" }; /* for push/pop */
 
-static const char *conditions[] =
-  { "NZ", "Z", "NC", "C" };
+static const char* conditions[] =
+{ "NZ", "Z", "NC", "C" };
 
 static GBOPCODE opcodes[] = {
   { 0xff, 0x00, "NOP" },
@@ -109,82 +112,192 @@ static GBOPCODE cbOpcodes[] = {
   { 0x00, 0x00, "DB CBh, %B" }
 };
 
-
-int disassemble(u8 *data)
+template<typename ... Args>
+std::string string_format(const std::string& format, Args ... args)
 {
-    u16 pc = 0;
-    u8 opcode = data[pc++];
-    GBOPCODE *op = NULL;
-    const char *mnem = NULL;
+	int size_s = std::snprintf(nullptr, 0, format.c_str(), args ...) + 1; // Extra space for '\0'
+	if (size_s <= 0) { throw std::runtime_error("Error during formatting."); }
+	auto size = static_cast<size_t>(size_s);
+	auto buf = std::make_unique<char[]>(size);
+	std::snprintf(buf.get(), size, format.c_str(), args ...);
+	return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
+}
 
-    if (opcode == 0xcb) {
-        /* extended instruction */
-        op = cbOpcodes;
-        opcode = data[pc++];
-    } else {
-        op = opcodes;
-    }
+int disassemble(u8* data)
+{
+	u16 pc = 0;
+	u8 opcode = data[pc++];
+	GBOPCODE* op = NULL;
+	const char* mnem = NULL;
 
-    while ((opcode & op->mask) != op->value)
-        op++;
-    mnem = op->mnem;
+	if (opcode == 0xcb)
+	{
+		/* extended instruction */
+		op = cbOpcodes;
+		opcode = data[pc++];
+	}
+	else
+	{
+		op = opcodes;
+	}
 
-    u8 temp1, temp2;
-    s8 stemp;
+	while ((opcode & op->mask) != op->value)
+		op++;
 
-    while (*mnem) {
-        if (*mnem == '%') {
-            mnem++;
-            switch(*mnem) {
-            case 'B': /* Single byte */
-                temp1 = data[pc++];
-                printf("0x%x", temp1);
-                break;
-            case 'W': /* Word (two bytes) */
-                temp1 = data[pc++];
-                temp2 = data[pc++];
-                printf("0x%x", temp1 | (temp2 << 8));
-                break;
-            case 'd': /* Signed displacement (one byte) */
-                stemp = data[pc++];
-                printf("%d", stemp);
-                break;
-            case 'n': /* Single byte, no 0x prefix */
-                temp1 = data[pc++];
-                printf("%02x", temp1);
-                break;
-            case 'r': /* Register name */
-                temp1 = *(++mnem) - '0';
-                printf("%s", registers[(opcode >> temp1) & 7]);
-                break;
-            case 'R': /* 16 bit register name (double reg) */
-                temp1 = *(++mnem) - '0';
-                printf("%s", registers16[(opcode >> temp1) & 3]);
-                break;
-            case 't': /* 16 bit register name (double reg) for push/pop */
-                temp1 = *(++mnem) - '0';
-                printf("%s", registers16[4 + ((opcode >> temp1) & 3)]);
-                break;
-            case 'c': /* condition flag name */
-                temp1 = *(++mnem) - '0';
-                printf("%s", conditions[(opcode >> temp1) & 3]);
-                break;
-            case 'b': /* bit number of CB bit instruction */
-                temp1 = (opcode >> 3) & 7;
-                printf("%x", temp1);
-                break;
-            case 'P': /* RST address */
-                temp1 = ((opcode >> 3) & 7) * 8;
-                printf("0x%x", temp1);
-                break;
-            default:
-                printf("%%%c", *mnem);
-            }
-        } else {
-            putc(*mnem, stdout);
-        }
-        mnem++;
-    }
-    putc('\n', stdout);
-    return pc;
+	mnem = op->mnem;
+
+	u8 temp1, temp2;
+	s8 stemp;
+
+	while (*mnem)
+	{
+		if (*mnem == '%')
+		{
+			mnem++;
+			switch (*mnem)
+			{
+			case 'B': /* Single byte */
+				temp1 = data[pc++];
+				printf("0x%x", temp1);
+				break;
+			case 'W': /* Word (two bytes) */
+				temp1 = data[pc++];
+				temp2 = data[pc++];
+				printf("0x%x", temp1 | (temp2 << 8));
+				break;
+			case 'd': /* Signed displacement (one byte) */
+				stemp = data[pc++];
+				printf("%d", stemp);
+				break;
+			case 'n': /* Single byte, no 0x prefix */
+				temp1 = data[pc++];
+				printf("%02x", temp1);
+				break;
+			case 'r': /* Register name */
+				temp1 = *(++mnem) - '0';
+				printf("%s", registers[(opcode >> temp1) & 7]);
+				break;
+			case 'R': /* 16 bit register name (double reg) */
+				temp1 = *(++mnem) - '0';
+				printf("%s", registers16[(opcode >> temp1) & 3]);
+				break;
+			case 't': /* 16 bit register name (double reg) for push/pop */
+				temp1 = *(++mnem) - '0';
+				printf("%s", registers16[4 + ((opcode >> temp1) & 3)]);
+				break;
+			case 'c': /* condition flag name */
+				temp1 = *(++mnem) - '0';
+				printf("%s", conditions[(opcode >> temp1) & 3]);
+				break;
+			case 'b': /* bit number of CB bit instruction */
+				temp1 = (opcode >> 3) & 7;
+				printf("%x", temp1);
+				break;
+			case 'P': /* RST address */
+				temp1 = ((opcode >> 3) & 7) * 8;
+				printf("0x%x", temp1);
+				break;
+			default:
+				printf("%%%c", *mnem);
+			}
+		}
+		else
+		{
+			putc(*mnem, stdout);
+		}
+		mnem++;
+	}
+	putc('\n', stdout);
+	return pc;
+}
+
+int disassemble(u8* data, std::vector<std::string>& outOpcodes)
+{
+	u16 pc = 0;
+	u8 opcode = data[pc++];
+	GBOPCODE* op = NULL;
+	const char* mnem = NULL;
+
+	if (opcode == 0xcb)
+	{
+		/* extended instruction */
+		op = cbOpcodes;
+		opcode = data[pc++];
+	}
+	else
+	{
+		op = opcodes;
+	}
+
+	while ((opcode & op->mask) != op->value)
+		op++;
+
+	mnem = op->mnem;
+	std::string mnems{};
+
+	u8 temp1, temp2;
+	s8 stemp;
+
+	while (*mnem)
+	{
+		if (*mnem == '%')
+		{
+			mnem++;
+			switch (*mnem)
+			{
+			case 'B': /* Single byte */
+				temp1 = data[pc++];
+				//mnems += string_format("0x%x", temp1);
+				break;
+			case 'W': /* Word (two bytes) */
+				temp1 = data[pc++];
+				temp2 = data[pc++];
+				//mnems += string_format("0x%x", temp1 | (temp2 << 8));
+				break;
+			case 'd': /* Signed displacement (one byte) */
+				stemp = data[pc++];
+				//mnems += string_format("%d", stemp);
+				break;
+			case 'n': /* Single byte, no 0x prefix */
+				temp1 = data[pc++];
+				//mnems += string_format("%02x", temp1);
+				break;
+			case 'r': /* Register name */
+				temp1 = *(++mnem) - '0';
+				mnems += string_format("%s", registers[(opcode >> temp1) & 7]);
+				break;
+			case 'R': /* 16 bit register name (double reg) */
+				temp1 = *(++mnem) - '0';
+				//mnems += string_format("%s", registers16[(opcode >> temp1) & 3]);
+				break;
+			case 't': /* 16 bit register name (double reg) for push/pop */
+				temp1 = *(++mnem) - '0';
+				//mnems += string_format("%s", registers16[4 + ((opcode >> temp1) & 3)]);
+				break;
+			case 'c': /* condition flag name */
+				temp1 = *(++mnem) - '0';
+				mnems += string_format("%s", conditions[(opcode >> temp1) & 3]);
+				break;
+			case 'b': /* bit number of CB bit instruction */
+				temp1 = (opcode >> 3) & 7;
+				//mnems += string_format("%x", temp1);
+				break;
+			case 'P': /* RST address */
+				temp1 = ((opcode >> 3) & 7) * 8;
+				//mnems += string_format("0x%x", temp1);
+				break;
+			default:
+				//mnems += string_format("%%%c", *mnem);
+				break;
+			}
+		}
+		else
+		{
+			mnems += *mnem;
+		}
+		mnem++;
+	}
+	outOpcodes.push_back(std::move(mnems.c_str()));
+
+	return pc;
 }

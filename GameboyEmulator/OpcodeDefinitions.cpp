@@ -192,6 +192,33 @@ FINLINE void LR35902::RLC(uint8_t& toRotate)
 	Register.zeroF = !toRotate;
 }
 
+//RotateLeft
+FINLINE void LR35902::RL(uint8_t& toRotate)
+{
+	const bool msb{ bool(toRotate & 0x80) };
+	toRotate <<= 1;
+	toRotate |= (Register.carryF << 0);
+
+	Register.f = 7;
+	Register.carryF = msb;
+	Register.zeroF = !toRotate;
+}
+
+//RotateRightCarry
+FINLINE void LR35902::RRC(uint8_t& toRotate)
+{
+	Register.f = 0;
+	const bool lsb{ bool(toRotate & 0x1) };
+	toRotate = static_cast<uint8_t>((toRotate >> 1) | (lsb << 7));
+
+	//toRotate >>= 1;
+	//toRotate |= uint8_t(lsb);
+	Register.carryF = lsb;
+	Register.zeroF = !toRotate;
+	Register.halfCarryF = false;
+	Register.subtractF = false;
+}
+
 //RotateRight
 FINLINE void LR35902::RR(uint8_t& toRotate)
 {
@@ -210,6 +237,15 @@ FINLINE void LR35902::SLA(uint8_t& toShift)
 	Register.f = 0;
 	Register.carryF = toShift & 0x80;
 	toShift <<= 1;
+	Register.zeroF = !toShift;
+}
+
+//ShiftRightArithmetic
+FINLINE void LR35902::SRA(uint8_t& toShift)
+{
+	Register.f = 0;
+	Register.carryF = toShift & 0x1;
+	toShift >>= 1;
 	Register.zeroF = !toShift;
 }
 

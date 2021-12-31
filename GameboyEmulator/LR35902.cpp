@@ -864,7 +864,11 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 		case 0xFF:
 			OPCYCLE(RST(0x38), 16);
 	#pragma endregion
-	
+			//following opcodes were not in the original implementation of the emulator
+#pragma region missing opcodes
+		case 0x0F: OPCYCLE(RRC(Register.a), 4);
+		case 0x17: OPCYCLE(RL(Register.a), 4);
+#pragma endregion
 	#pragma region Extended Opcodes
 		case 0xCB:
 			opcode = Gameboy.ReadMemory(Register.pc++);
@@ -1500,6 +1504,55 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 			case 0x37:
 				OPCYCLE(SWAP(Register.a), 8);
 	#pragma endregion
+#pragma region missing opcodes
+			case 0x08: OPCYCLE(RRC(Register.b), 8);
+			case 0x09: OPCYCLE(RRC(Register.c), 8);
+			case 0x0A: OPCYCLE(RRC(Register.d), 8);
+			case 0x0B: OPCYCLE(RRC(Register.e), 8);
+			case 0x0C: OPCYCLE(RRC(Register.h), 8);
+			case 0x0D: OPCYCLE(RRC(Register.l), 8);
+			case 0x0E:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				RRC(hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0x0F: OPCYCLE(RRC(Register.a), 8);
+
+			case 0x10: OPCYCLE(RL(Register.b), 8);
+			case 0x11: OPCYCLE(RL(Register.c), 8);
+			case 0x12: OPCYCLE(RL(Register.d), 8);
+			case 0x13: OPCYCLE(RL(Register.e), 8);
+			case 0x14: OPCYCLE(RL(Register.h), 8);
+			case 0x15: OPCYCLE(RL(Register.l), 8);
+			case 0x16:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				RL(hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0x17: OPCYCLE(RL(Register.a), 8);
+
+			case 0x28: OPCYCLE(SRA(Register.b), 8);
+			case 0x29: OPCYCLE(SRA(Register.c), 8);
+			case 0x2A: OPCYCLE(SRA(Register.d), 8);
+			case 0x2B: OPCYCLE(SRA(Register.e), 8);
+			case 0x2C: OPCYCLE(SRA(Register.h), 8);
+			case 0x2D: OPCYCLE(SRA(Register.l), 8);
+			case 0x2E:
+			{
+				uint8_t hlDeRef{ Gameboy.ReadMemory(Register.hl()) };
+				SRA(hlDeRef);
+				Gameboy.WriteMemory(Register.hl(), hlDeRef);
+				cycles = 16;
+				break;
+			}
+			case 0x2F: OPCYCLE(SRA(Register.a), 8);
+#pragma endregion
 	#ifdef _DEBUG
 			default:
 				//assert(("Opcode with prefix 0xCB not implemented", false));

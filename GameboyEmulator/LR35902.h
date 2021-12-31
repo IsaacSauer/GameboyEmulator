@@ -681,6 +681,8 @@ private:
 	void RET(bool doReturn = true, bool handleCycles = true);
 	void RETI();
 	void RLC(uint8_t& toRotate);
+	void RL(uint8_t& toRotate);
+	void RRC(uint8_t& toRotate);
 	void RR(uint8_t& toRotate);
 	void RST(const uint8_t address);
 	void LD(uint16_t* const dest, const uint16_t data);
@@ -688,6 +690,7 @@ private:
 	void SCF();
 	void SET(const uint8_t bit, uint8_t& data);
 	void SLA(uint8_t& toShift);
+	void SRA(uint8_t& toShift);
 	void SBC(uint8_t toSub, bool subCarry = true);
 	void SRL(uint8_t& toShift);
 	void STOP();

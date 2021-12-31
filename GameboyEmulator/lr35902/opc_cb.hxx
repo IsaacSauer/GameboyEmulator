@@ -1,5 +1,6 @@
 // license:BSD-3-Clause
 // copyright-holders:Wilbert Pol
+// Edited by Isaac Sauer
 
 #define RLC_8BIT(x)             \
 {                               \

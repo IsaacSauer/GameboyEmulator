@@ -1,5 +1,6 @@
 /*
  * Originally adapted from VisualBoyAdvance.
+ * Edited by Isaac Sauer
  */
 
 #include "disassembler.h"
@@ -130,7 +131,7 @@ std::string int_to_hex(T i)
 {
 	std::stringstream stream;
 	stream << "0x"
-		<< std::setfill('0') << std::setw(sizeof(T) * 1)
+		<< std::setfill('0') << std::setw(sizeof(T)*2)
 		<< std::hex << i;
 	return stream.str();
 }
@@ -309,8 +310,25 @@ int disassemble(u8* data, std::vector<std::string>& outOpcodes)
 		}
 		mnem++;
 	}
-	mnems += "    \t" + int_to_hex(int(opcode));
+	
+	pc = data[0];
+	if (pc == 0xcb)
+	{
+		pc *= 0x100;
+		pc += data[1];
+	}
+
+	mnems = int_to_hex(pc) + '\t' + mnems;
+	//mnems += "    \t" + int_to_hex(pc);
+
 	outOpcodes.push_back(mnems);
 
 	return pc;
+}
+
+std::string disassembleToString(u8* data)
+{
+	std::vector<std::string> str{};
+	disassemble(data, str);
+	return str.front();
 }

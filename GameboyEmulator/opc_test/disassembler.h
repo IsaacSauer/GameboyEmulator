@@ -8,5 +8,6 @@
 int disassemble(u8 *data);
 
 int disassemble(u8 *data, std::vector<std::string>& opcodes);
+std::string disassembleToString(u8 *data);
 
 #endif

@@ -6,70 +6,107 @@
 #include <condition_variable>
 #include <atomic>
 
-#include "opc_test\tester.h"
+//#include "opc_test\tester.h"
+
 class GameBoy;
+struct state;
+struct mem_access;
+
+#ifdef __GNUC__
+#define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
+#endif
+
+#ifdef _MSC_VER
+#define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
+#endif
 
 struct Registers final
 {
-	enum Flags : uint8_t { zero = 7, subtract = 6, halfcarry = 5, carry = 4 };
-
-	uint8_t a{}, b{}, c{}, d{}, e{};
+	//	enum Flags : uint8_t { zero = 7, subtract = 6, halfcarry = 5, carry = 4 };
+	//
+	//	uint8_t a{}, b{}, c{}, d{}, e{};
+	//
+	//	union
+	//	{
+	//		uint8_t f{}; //TODO: Lower nible is ALWAYS 0!!!
+	//#ifndef _MSC_VER
+	//#error	Compiler might not be supported
+	//		/*
+	//		 * Allocation of union variables is implementation-defined!
+	//		 * So, the below MIGHT not be allocated correctly
+	//		 * zeroF is supposed to be bit 7/7
+	//		 */
+	//#endif
+	//		struct
+	//		{
+	//			uint8_t unusedF : 4;
+	//			uint8_t carryF : 1;
+	//			uint8_t halfCarryF : 1;
+	//			uint8_t subtractF : 1;
+	//			uint8_t zeroF : 1;
+	//		};
+	//	};
+	//
+	//	uint8_t h{}, l{};
+	//
+	//	uint16_t af() const { return static_cast<uint16_t>(a) << 8 | f; }
+	//
+	//	void af(uint16_t value)
+	//	{
+	//		a = value >> 8;
+	//		f = value & 0xF0;
+	//	}
+	//
+	//	uint16_t bc() const { return static_cast<uint16_t>(b) << 8 | c; }
+	//
+	//	void bc(uint16_t value)
+	//	{
+	//		b = value >> 8;
+	//		c = value & 0xFF;
+	//	}
+	//
+	//	uint16_t de() const { return static_cast<uint16_t>(d) << 8 | e; }
+	//
+	//	void de(uint16_t value)
+	//	{
+	//		d = value >> 8;
+	//		e = value & 0xFF;
+	//	}
+	//
+	//	uint16_t hl() const { return static_cast<uint16_t>(h) << 8 | l; }
+	//
+	//	void hl(uint16_t value)
+	//	{
+	//		h = value >> 8;
+	//		l = value & 0xFF;
+	//	}
 
 	union
 	{
-		uint8_t f{}; //TODO: Lower nible is ALWAYS 0!!!
-#ifndef _MSC_VER
-#error	Compiler might not be supported
-		/*
-		 * Allocation of union variables is implementation-defined!
-		 * So, the below MIGHT not be allocated correctly
-		 * zeroF is supposed to be bit 7/7
-		 */
-#endif
+		uint8_t regs[8];
 		struct
 		{
-			uint8_t unusedF : 4;
-			uint8_t carryF : 1;
-			uint8_t halfCarryF : 1;
-			uint8_t subtractF : 1;
-			uint8_t zeroF : 1;
-		};
+			uint16_t BC, DE, HL, AF;
+		} reg16;
+		struct
+		{ /* little-endian of x86 is not nice here. */
+			uint8_t C, B, E, D, L, H, F, A;
+		} reg8;
+		PACK(struct packed
+		{
+			char padding[6];
+			uint8_t pad1 : 1;
+			uint8_t pad2 : 1;
+			uint8_t pad3 : 1;
+			uint8_t pad4 : 1;
+			uint8_t CF : 1;
+			uint8_t HF : 1;
+			uint8_t NF : 1;
+			uint8_t ZF : 1;
+		} flags);
 	};
 
-	uint8_t h{}, l{};
 	uint16_t pc{}, sp{};
-
-	uint16_t af() const { return static_cast<uint16_t>(a) << 8 | f; }
-
-	void af(uint16_t value)
-	{
-		a = value >> 8;
-		f = value & 0xF0;
-	}
-
-	uint16_t bc() const { return static_cast<uint16_t>(b) << 8 | c; }
-
-	void bc(uint16_t value)
-	{
-		b = value >> 8;
-		c = value & 0xFF;
-	}
-
-	uint16_t de() const { return static_cast<uint16_t>(d) << 8 | e; }
-
-	void de(uint16_t value)
-	{
-		d = value >> 8;
-		e = value & 0xFF;
-	}
-
-	uint16_t hl() const { return static_cast<uint16_t>(h) << 8 | l; }
-
-	void hl(uint16_t value)
-	{
-		h = value >> 8;
-		l = value & 0xFF;
-	}
 };
 
 class LR35902 final
@@ -85,6 +122,7 @@ public:
 
 	void Reset(const bool skipBoot = true);
 	void ExecuteNextOpcode();
+	void ExecuteNextOpcodeTest();
 
 	void TestCPU();
 
@@ -643,6 +681,7 @@ private:
 	bool InteruptChangePending{ false }; ///< When an interupt change is requested, it gets pushed after the next opcode\note lsb==Disable, msb==Enable
 
 	uint8_t ExecuteOpcode(uint8_t opcode);
+	uint8_t ExecuteOpcodeCB(uint8_t opcode);
 	void ConfigureLCDStatus();
 	void DrawLine() const;
 	void DrawBackground() const;
@@ -706,7 +745,7 @@ private:
 	size_t instruction_mem_size;
 	uint8_t* instruction_mem;
 	int num_mem_accesses;
-	struct mem_access mem_accesses[16];
+	mem_access* mem_accesses;
 
 public:
 	/*
@@ -724,15 +763,15 @@ public:
 	/*
 	Reset your CPU to a specific state, as defined in the state struct (format can be found below).
 	This function is called in between each different instruction and set of inputs per instruction.
-	
+
 	Resets the CPU state (e.g., registers) to a given state state.
 	*/
 	void mycpu_set_state(state* state);
-	 
+
 	/*
 	Load the current state of your CPU into the state struct (as defined below).
 	This function is called after each test run for different instruction and input combinations.
-	
+
 	Query the current state of the CPU.
 	*/
 	void mycpu_get_state(state* state);
@@ -740,7 +779,7 @@ public:
 	/*
 	Step a single instruction of your CPU, and return the number of cycles spent doing so.
 	This means machine cycles (running at a 4.19 MHz clock), so for instance the NOP instruction should return 4.
-	
+
 	Step a single instruction of the CPU. Returns the amount of cycles this took
 	(e.g., NOP should return 4).
 	*/
@@ -754,23 +793,7 @@ public:
 
 	void mymmu_write(uint16_t address, uint8_t data);
 
-	void mmu_write(u16 addr, u8 val)
-	{
-		struct mem_access* access = &mem_accesses[num_mem_accesses++];
-		access->type = MEM_ACCESS_WRITE;
-		access->addr = addr;
-		access->val = val;
-	}
-	u8 mmu_read(u16 addr)
-	{
-		u8 ret;
+	void mmu_write(uint16_t addr, uint8_t val);
 
-		if (addr < instruction_mem_size)
-			ret = instruction_mem[addr];
-		else
-			ret = 0xaa;
-
-
-		return ret;
-	}
+	uint16_t mmu_read(uint16_t addr);
 };

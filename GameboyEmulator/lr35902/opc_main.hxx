@@ -23,7 +23,8 @@
 #define mem_read_word(a)		Gameboy.ReadMemoryWord(a);
 #define mem_write_word(a, x)	Gameboy.WriteMemoryWord(a, x);
 
-#define cycles_passed(n) Gameboy.AddCycles(n)
+#define cycles_passed(n) cycles = n
+//#define cycles_passed(n) Gameboy.AddCycles(n)
 
 #define INC_8BIT(x) \
 { \
@@ -1156,13 +1157,13 @@ case 0xCA: /*      JP Z,n16 */
 	}
 }
 break;
-case 0xCB: /*      PREFIX! */
-	x = mem_read_byte(m_PC++);
-	switch (x)
-	{
-#include "lr35902/opc_cb.hxx"
-	}
-	break;
+//case 0xCB: /*      PREFIX! */
+//	x = mem_read_byte(m_PC++);
+//	switch (x)
+//	{
+//#include "lr35902/opc_cb.hxx"
+//	}
+//	break;
 case 0xCC: /*      CALL Z,n16 */
 {
 	uint16_t addr = mem_read_word(m_PC);

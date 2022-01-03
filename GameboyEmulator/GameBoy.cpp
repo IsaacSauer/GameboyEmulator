@@ -198,7 +198,7 @@ void GameBoy::Disassemble()
 uint8_t GameBoy::ReadMemory(const uint16_t pos)
 {
 	if (m_TestingOpcodes)
-		return Cpu.mmu_read(pos);
+		return (uint8_t)Cpu.mmu_read(pos);
 
 	if (pos <= 0x3FFF) //ROM Bank 0
 	{

@@ -17,7 +17,7 @@ FINLINE void LR35902::ADC(uint8_t toAdd, bool addCarry)
 	Register.reg8.A += toAdd;
 
 	Register.flags.ZF = !Register.reg8.A;
-	Register.flags.ZF = 0;
+	Register.flags.NF = 0;
 }
 
 /**
@@ -49,7 +49,7 @@ FINLINE void LR35902::ADD16(bool addToHL, uint16_t toAdd)
 		Register.sp += toAddS;
 		Register.flags.ZF = 0;
 	}
-	Register.flags.ZF = 0; //even tho we might've done a subtraction...
+	Register.flags.NF = 0; //even tho we might've done a subtraction...
 }
 
 FINLINE void LR35902::SBC(uint8_t toSub, bool subCarry)
@@ -60,7 +60,7 @@ FINLINE void LR35902::SBC(uint8_t toSub, bool subCarry)
 	Register.flags.HF = ((Register.reg8.A - toSub) ^ toSub ^ Register.reg8.A) & 0x10;
 	Register.flags.CF = (static_cast<int8_t>(Register.reg8.A) - toSub) < 0;
 	Register.flags.ZF = !Register.reg8.A;
-	Register.flags.ZF = 1;
+	Register.flags.NF = 1;
 	Register.reg8.A -= toSub;
 }
 
@@ -73,7 +73,7 @@ FINLINE void LR35902::OR(const uint8_t toOr)
 
 FINLINE void LR35902::INC(uint8_t& toInc)
 {
-	Register.flags.ZF = 0;
+	Register.flags.NF = 0;
 	//Register.flags.CF; //Does not affect the carry flag! The INC/DEC opcode is often used to control loops; Loops are often used for multiple precision arithmetic so, to prevent having to push the carry state after every loop they just made the instruction ignore it! :D
 	Register.flags.HF = static_cast<uint8_t>((toInc & 0xF) == 0xF);
 	Register.flags.ZF = !(++toInc);
@@ -87,17 +87,17 @@ FINLINE void LR35902::INC(uint16_t& toInc)
 
 FINLINE void LR35902::AND(uint8_t toAnd)
 {
-	//Register.reg8.F = 0;
-	//Register.flags.HF = 1; //Why tho?
-	//Register.reg8.A &= toAnd;
-	//Register.flags.ZF = !Register.reg8.A;
+	Register.reg8.F = 0;
+	Register.flags.HF = 1; //Why tho?
+	Register.reg8.A &= toAnd;
+	Register.flags.ZF = !Register.reg8.A;
 
-	Register.reg8.F = (Register.reg8.A == 0) ? (Register.flags.HF | Register.flags.ZF) : Register.flags.HF;
+	//Register.reg8.F = (Register.reg8.A == 0) ? (Register.flags.HF | Register.flags.ZF) : Register.flags.HF;
 }
 
 FINLINE void LR35902::DEC(uint8_t& toDec)
 {
-	Register.flags.ZF = 1;
+	Register.flags.NF = 1;
 	//Register.flags.CF; //Does not affect the carry flag! The INC/DEC opcode is often used to control loops; Loops are often used for multiple precision arithmetic so, to prevent having to push the carry state after every loop they just made the instruction ignore it! :D
 	Register.flags.HF = !(toDec & 0xF);
 	Register.flags.ZF = !--toDec;
@@ -118,7 +118,7 @@ FINLINE void LR35902::XOR(const uint8_t toXor)
 
 FINLINE void LR35902::CP(uint8_t toCompare)
 {
-	Register.flags.ZF = 1;
+	Register.flags.NF = 1;
 	Register.flags.ZF = !(Register.reg8.A - toCompare);
 	Register.flags.CF = Register.reg8.A < toCompare;
 	Register.flags.HF = static_cast<int16_t>(Register.reg8.A & 0xF) - (toCompare & 0xF) < 0;
@@ -129,7 +129,7 @@ FINLINE void LR35902::DAA()
 {
 	int newA{ Register.reg8.A };
 
-	if (!Register.flags.ZF)
+	if (!Register.flags.NF)
 	{
 		if (Register.flags.HF || (newA & 0xF) > 9) //if we did an initial overflow on the lower nibble or have exceeded 9 (the max value in BCD)
 			newA += 6; //Overflow (15-9)
@@ -218,7 +218,7 @@ FINLINE void LR35902::RRC(uint8_t& toRotate)
 	Register.flags.CF = lsb;
 	Register.flags.ZF = !toRotate;
 	Register.flags.HF = false;
-	Register.flags.ZF = false;
+	Register.flags.NF = false;
 }
 
 //RotateRight
@@ -265,7 +265,7 @@ FINLINE void LR35902::SRL(uint8_t& toShift)
 FINLINE void LR35902::BITop(const uint8_t bit, const uint8_t data)
 {
 	Register.flags.ZF = !((data >> bit) & 1);
-	Register.flags.ZF = 0;
+	Register.flags.NF = 0;
 	Register.flags.HF = 1;
 }
 
@@ -297,7 +297,7 @@ FINLINE void LR35902::CCF()
 
 FINLINE void LR35902::SCF()
 {
-	Register.flags.ZF = Register.flags.HF = 0;
+	Register.flags.NF = Register.flags.HF = 0;
 	Register.flags.CF = 1;
 }
 
@@ -311,7 +311,7 @@ FINLINE void LR35902::NOP() {}
 FINLINE void LR35902::CPL()
 {
 	Register.reg8.A = ~Register.reg8.A;
-	Register.flags.ZF = Register.flags.HF = 1;
+	Register.flags.NF = Register.flags.HF = 1;
 }
 #pragma endregion
 

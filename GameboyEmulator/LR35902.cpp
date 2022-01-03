@@ -12,7 +12,7 @@
 #endif
 #include <iostream>
 
-#include "opc_test\tester.h"
+//#include "opc_test\tester.h"
 
 static int cycles_per_instruction[] = {
 	/* 0   1   2   3   4   5   6   7   8   9   a   b   c   d   e   f       */
@@ -796,7 +796,7 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 		const uint8_t val{ Gameboy.ReadMemory(Register.pc++) };
 		OPCYCLE(LD(Register.reg8.A, Gameboy.ReadMemory(static_cast<uint16_t>(0xFF00 + val))), 12);
 	}
-
+	break;
 	case 0xC1:
 	{
 		uint16_t temp;
@@ -977,7 +977,6 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 	}
 
 	//	uint8_t   x;
-	//
 	//	switch (opcode)
 	//	{
 	//#include "lr35902/opc_main.hxx"
@@ -985,7 +984,7 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 	//
 	//		break;
 	//	}
-	Gameboy.AddCycles(cycles);
+	Gameboy.AddCycles((uint8_t)cycles_per_instruction[opcode]);
 
 	//std::cout << "cycles this opcode took: " << std::to_string(cycles) << std::endl;
 
@@ -1680,13 +1679,21 @@ uint8_t LR35902::ExecuteOpcodeCB(uint8_t opcode)
 #pragma endregion
 #ifdef _DEBUG
 	default:
-		//assert(("Opcode with prefix 0xCB not implemented", false));
-		//assert(false);
+		assert(("Opcode with prefix 0xCB not implemented", false));
+		assert(false);
 		break;
 #endif
 	}
 
-	Gameboy.AddCycles(cycles);
+	//	uint8_t   x;
+	//	switch (opcode)
+	//	{
+	//#include "lr35902/opc_cb.hxx"
+	//	default:
+	//
+	//		break;
+	//	}
+	Gameboy.AddCycles((uint8_t)cycles_per_instruction_cb[opcode]);
 
 	//std::cout << "cycles this opcode took: " << std::to_string(cycles) << std::endl;
 
@@ -1945,7 +1952,7 @@ void LR35902::mycpu_init(size_t tester_instruction_mem_size, uint8_t* tester_ins
 {
 	{
 		instruction_mem_size = tester_instruction_mem_size;
-		instruction_mem = &tester_instruction_mem[16];
+		instruction_mem = tester_instruction_mem;
 
 		/* ... Initialize your CPU here ... */
 
@@ -2011,8 +2018,7 @@ int LR35902::mycpu_step(uint8_t opCode)
 
 	u8 op;
 	int cycles = 0;
-
-	op = (uint8_t)mmu_read(Register.pc++);
+	op = (uint8_t)mmu_read(Register.pc);
 	if (op == 0xcb)
 	{
 		op = (uint8_t)mmu_read(Register.pc++);
@@ -2022,7 +2028,7 @@ int LR35902::mycpu_step(uint8_t opCode)
 	else
 	{
 		cycles = cycles_per_instruction[op];
-		ExecuteOpcode(op);
+		ExecuteOpcode(opCode);
 	}
 
 	return cycles;
@@ -2036,7 +2042,6 @@ uint16_t LR35902::mmu_read(uint16_t addr)
 		ret = instruction_mem[addr];
 	else
 		ret = 0xaa;
-
 
 	return ret;
 }

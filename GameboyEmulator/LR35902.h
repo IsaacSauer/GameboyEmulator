@@ -6,7 +6,7 @@
 #include <condition_variable>
 #include <atomic>
 
-//#include "opc_test\tester.h"
+#include "opc_test\tester.h"
 
 class GameBoy;
 struct state;
@@ -745,7 +745,7 @@ private:
 	size_t instruction_mem_size;
 	uint8_t* instruction_mem;
 	int num_mem_accesses;
-	mem_access* mem_accesses;
+	mem_access mem_accesses[16];
 
 public:
 	/*

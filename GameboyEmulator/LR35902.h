@@ -84,7 +84,7 @@ public:
 	LR35902& operator=(LR35902&& lhs) = delete; //Move Assignment
 
 	void Reset(const bool skipBoot = true);
-	void ExecuteNextOpcode();
+	uint8_t ExecuteNextOpcode();
 
 	void TestCPU();
 
@@ -761,6 +761,7 @@ public:
 		access->addr = addr;
 		access->val = val;
 	}
+
 	u8 mmu_read(u16 addr)
 	{
 		u8 ret;

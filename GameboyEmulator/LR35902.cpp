@@ -115,7 +115,7 @@ void LR35902::Reset(const bool skipBoot)
 	}
 }
 
-void LR35902::ExecuteNextOpcode()
+uint8_t LR35902::ExecuteNextOpcode()
 {
 	uint8_t opcode{ Gameboy.ReadMemory(Register.pc++) };
 
@@ -203,6 +203,8 @@ void LR35902::ExecuteNextOpcodeTest()
 			InteruptChangePending = false;
 		}
 	}
+
+	return cycles;
 }
 
 void LR35902::TestCPU()
@@ -960,6 +962,7 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 	case 0xFF:
 		OPCYCLE(RST(0x38), 16);
 #pragma endregion
+
 		//following opcodes were not in the original implementation of the emulator
 #pragma region missing opcodes
 	case 0x0F: OPCYCLE(RRC(Register.reg8.A), 4);

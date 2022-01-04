@@ -124,12 +124,13 @@ static void op_state_reset(struct op_state *op_state)
 
 static int run_state(struct state *state, uint8_t opCode)
 {
+
     struct state tcpu_out_state, rcpu_out_state;
 
     tcpu_ops->set_state(state);
     rcpu_reset(state);
 
-    tcpu_ops->step(opCode);
+    tcpu_ops->step();
     rcpu_step();
 
     tcpu_ops->get_state(&tcpu_out_state);
@@ -145,6 +146,10 @@ static int run_state(struct state *state, uint8_t opCode)
         dump_state(&tcpu_out_state);
         printf("\n - Correct output state -\n");
         dump_state(&rcpu_out_state);
+
+        //TODO write to a file
+
+
         return 1;
     }
 
@@ -157,7 +162,6 @@ static int run_state(struct state *state, uint8_t opCode)
     //dump_state(&tcpu_out_state);
     //printf("\n - Correct output state -\n");
     //dump_state(&rcpu_out_state);
-
     return 0;
 }
 

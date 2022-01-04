@@ -2,28 +2,29 @@
 // copyright-holders:Wilbert Pol
 // Edited by Isaac Sauer
 
-#define m_A Register.a
-#define m_B Register.b
-#define m_C	Register.c
-#define m_D	Register.d
-#define m_E	Register.e
-#define m_H	Register.h
-#define m_L	Register.l
-#define m_F Register.f
+#define m_A Register.reg8.A
+#define m_B Register.reg8.B
+#define m_C	Register.reg8.C
+#define m_D	Register.reg8.D
+#define m_E	Register.reg8.E
+#define m_H	Register.reg8.H
+#define m_L	Register.reg8.L
+#define m_F Register.reg8.F
 #define m_PC Register.pc
 #define m_SP Register.sp
 
-#define FLAG_C Register.carryF
-#define FLAG_Z Register.zeroF
-#define FLAG_H Register.halfCarryF
-#define FLAG_N Register.unusedF
+#define FLAG_C Register.flags.CF
+#define FLAG_Z Register.flags.ZF
+#define FLAG_H Register.flags.HF
+#define FLAG_N Register.flags.NF
 
 #define mem_read_byte(a)		Gameboy.ReadMemory(a);
 #define mem_write_byte(a, x)	Gameboy.WriteMemory(a, x);
 #define mem_read_word(a)		Gameboy.ReadMemoryWord(a);
 #define mem_write_word(a, x)	Gameboy.WriteMemoryWord(a, x);
 
-#define cycles_passed(n) Gameboy.AddCycles(n)
+#define cycles_passed(n) cycles = n
+//#define cycles_passed(n) Gameboy.AddCycles(n)
 
 #define INC_8BIT(x) \
 { \
@@ -1156,13 +1157,13 @@ case 0xCA: /*      JP Z,n16 */
 	}
 }
 break;
-case 0xCB: /*      PREFIX! */
-	x = mem_read_byte(m_PC++);
-	switch (x)
-	{
-#include "lr35902/opc_cb.hxx"
-	}
-	break;
+//case 0xCB: /*      PREFIX! */
+//	x = mem_read_byte(m_PC++);
+//	switch (x)
+//	{
+//#include "lr35902/opc_cb.hxx"
+//	}
+//	break;
 case 0xCC: /*      CALL Z,n16 */
 {
 	uint16_t addr = mem_read_word(m_PC);

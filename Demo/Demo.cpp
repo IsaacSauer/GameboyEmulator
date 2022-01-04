@@ -143,11 +143,13 @@ int main(int argc, char* argv[])
 {
 	SDL_Init(SDL_INIT_EVERYTHING);
 
+	emu.TestCPU();
+
 	//Choose rom
 	std::string path{};
 	if (OpenFileDialog(path))
 	{
-		emu.LoadGame(path, true);
+		emu.LoadGame(path);
 		emu.Start();
 
 		wind = SDL_CreateWindow("SDL2 ImGui Renderer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_RESIZABLE);

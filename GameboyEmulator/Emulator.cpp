@@ -18,13 +18,10 @@ gbee::Emulator::~Emulator()
 	delete[] Instances;
 }
 
-void gbee::Emulator::LoadGame(const std::string& gbFile, bool testCPU) const
+void gbee::Emulator::LoadGame(const std::string& gbFile) const
 {
 	for (uint8_t i{ 0 }; i < InstanceCount; ++i)
 	{
-		if(testCPU)
-			Instances[i].TestCPU();
-
 		Instances[i].LoadGame(gbFile);
 		Instances[i].SetRunningVariable(true);
 	}
@@ -38,6 +35,12 @@ void gbee::Emulator::Start() const
 		std::thread t = std::thread{ &GameBoy::Update, std::ref(Instances[i]) };
 		t.detach(); //We don't need to sync them, ever..
 	}
+}
+
+void gbee::Emulator::TestCPU() const
+{
+	for (uint8_t i{ 0 }; i < InstanceCount; ++i)
+		Instances[i].TestCPU();
 }
 
 std::bitset<160 * 144 * 2> gbee::Emulator::GetFrameBuffer(const uint8_t instanceID) const

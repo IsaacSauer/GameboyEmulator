@@ -12,8 +12,6 @@
 #endif
 #include <iostream>
 
-//#include "opc_test\tester.h"
-
 static int cycles_per_instruction[] = {
 	/* 0   1   2   3   4   5   6   7   8   9   a   b   c   d   e   f       */
 	   4, 12,  8,  8,  4,  4,  8,  4, 20,  8,  8,  8,  4,  4,  8,  4, /* 0 */
@@ -213,13 +211,13 @@ void LR35902::TestCPU()
 	flags.keep_going_on_mismatch = 1;
 	flags.enable_cb_instruction_testing = 1;
 	flags.print_tested_instruction = 1;
-	flags.print_verbose_inputs = 1;
+	flags.print_verbose_inputs = 0;
 
 	using namespace std::placeholders;
 	tester_operations myops{};
 	myops.init = std::bind(&LR35902::mycpu_init, this, _1, _2);
-	myops.set_state = std::bind(&LR35902::mycpu_set_state, this, _1);;
-	myops.get_state = std::bind(&LR35902::mycpu_get_state, this, _1);;
+	myops.set_state = std::bind(&LR35902::mycpu_set_state, this, _1);
+	myops.get_state = std::bind(&LR35902::mycpu_get_state, this, _1);
 	myops.step = std::bind(&LR35902::mycpu_step, this);
 
 	tester_run(&flags, &myops);
@@ -1915,39 +1913,6 @@ void LR35902::ConfigureColorArray(uint8_t* const colorArray, uint8_t palette) co
 	colorArray[3] = palette & 0x3;
 }
 
-//TODO: Investigate Threading Bottleneck..
-/*void LR35902::ThreadWork( const uint8_t id, LR35902::DrawData **const drawData ) {
-	std::unique_lock<std::mutex> mtx{ ConditionalVariableMutex };
-
-	while (true) {
-		ActivateDrawers.
-			wait( mtx, [&drawData, id]()
-			{
-				return (*drawData && !((*drawData)->doneCounter & (1 << id)));
-			} ); //needs mutex to not miss the signal/check condition; Checks if this worker's bit is already set
-		//std::cout << int(id)<<" Started\n";
-		mtx.unlock(); //Let the other threads do their thing
-
-		const uint8_t fin{ uint8_t( id * 16 + 16 ) };
-		std::bitset<160 * 144 * 2> *fBuffer{ (std::bitset<160 * 144 * 2>*)(*drawData)->bitset };
-		for (uint8_t x{ uint8_t( id * 16 ) }; x < fin; ++x) {
-			const uint8_t xWrap{ uint8_t( (x + (*drawData)->scrollX) % 256 ) };
-			const uint16_t tileNumAddress{ uint16_t( (*drawData)->tileMapOffset + (xWrap / 8) ) };
-
-			const uint16_t tileData{ uint16_t( (*drawData)->tileSetAdress + Gameboy.ReadMemory( tileNumAddress ) * 16 ) }; //todo: Verify
-
-			const uint8_t paletteResult{ ReadPalette( tileData, uint8_t( xWrap % 8 ), (*drawData)->tileY ) };
-			(*fBuffer)[((*drawData)->fbOffset + x) * 2] = ((*drawData)->colors[paletteResult] & 2);
-			(*fBuffer)[(((*drawData)->fbOffset + x) * 2) + 1] = ((*drawData)->colors[paletteResult] & 1);
-		}
-
-		(*drawData)->doneCounter |= (1 << id);
-		mtx.lock(); //If not, possible deadlock
-		//std::cout << int(id)<<" Released\n";
-		ActivateDrawers.notify_all();
-	}
-}*/
-
 void LR35902::mycpu_init(size_t tester_instruction_mem_size, uint8_t* tester_instruction_mem)
 {
 	{
@@ -1958,8 +1923,6 @@ void LR35902::mycpu_init(size_t tester_instruction_mem_size, uint8_t* tester_ins
 
 		std::cout << "Initializing the CPU ..." << std::endl;
 
-		//Gameboy.InitROM();
-
 		Reset();
 	}
 }
@@ -1968,7 +1931,7 @@ void LR35902::mycpu_set_state(state* state)
 {
 	/* ... Load your CPU with state as described (e.g., registers) ... */
 
-	std::cout << "Setting state of the cpu ..." << std::endl;
+	//std::cout << "Setting state of the cpu ..." << std::endl;
 
 	Gameboy.SetPaused(state->halted);
 	InteruptsEnabled = state->interrupts_master_enabled;
@@ -1991,7 +1954,7 @@ void LR35902::mycpu_get_state(state* state)
 {
 	/* ... Copy your current CPU state into the provided struct ... */
 
-	std::cout << "Getting the current state of the CPU ..." << std::endl;
+	//std::cout << "Getting the current state of the CPU ..." << std::endl;
 
 	state->SP = Register.sp;
 	state->PC = Register.pc;
@@ -2014,11 +1977,11 @@ void LR35902::mycpu_get_state(state* state)
 
 void LR35902::mycpu_step()
 {
-	std::cout << "executing an opcode" << std::endl;
+	//std::cout << "executing an opcode" << std::endl;
 
 	u8 op;
 	int cycles = 0;
-	op = (uint8_t)mmu_read(Register.pc);
+	op = (uint8_t)mmu_read(Register.pc++);
 	if (op == 0xcb)
 	{
 		op = (uint8_t)mmu_read(Register.pc++);

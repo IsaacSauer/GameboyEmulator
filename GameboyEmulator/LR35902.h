@@ -672,10 +672,6 @@ private:
 	std::thread DrawThreads[10];
 	GameBoy& Gameboy;
 	unsigned int LCDCycles{};
-	//TODO: Investigate Threading Bottleneck
-	//DrawData* DrawDataStruct{};
-	//std::mutex ConditionalVariableMutex{};
-	//std::condition_variable ActivateDrawers{};
 
 	bool InteruptsEnabled{ false }; ///< InteruptsMasterEnable
 	bool InteruptChangePending{ false }; ///< When an interupt change is requested, it gets pushed after the next opcode\note lsb==Disable, msb==Enable
@@ -789,10 +785,6 @@ public:
 	Example mock MMU implementation, mapping the tester's instruction memory
 	read-only at address 0, and logging all writes.
 	*/
-	uint8_t mymmu_read(uint16_t address);
-
-	void mymmu_write(uint16_t address, uint8_t data);
-
 	void mmu_write(uint16_t addr, uint8_t val);
 
 	uint16_t mmu_read(uint16_t addr);

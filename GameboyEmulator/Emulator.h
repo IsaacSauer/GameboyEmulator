@@ -19,8 +19,10 @@ namespace gbee
 		Emulator& operator=(const Emulator& rhs) = delete; //Copy Assignment
 		Emulator& operator=(Emulator&& lhs) = delete; //Move Assignment
 
-		void LoadGame(const std::string& gbFile, bool testCPU) const;
+		void LoadGame(const std::string& gbFile) const;
 		void Start() const;
+		void TestCPU() const;
+
 		std::bitset<160 * 144 * 2> GetFrameBuffer(const uint8_t instanceID) const;
 		void SetKeyState(const uint8_t key, const bool state, const uint8_t instanceID) const;
 		//void RunForMs(const unsigned int ms, const uint8_t instanceID);		Not implemented, The user should do the timing..

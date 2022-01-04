@@ -220,7 +220,7 @@ void LR35902::TestCPU()
 	myops.init = std::bind(&LR35902::mycpu_init, this, _1, _2);
 	myops.set_state = std::bind(&LR35902::mycpu_set_state, this, _1);;
 	myops.get_state = std::bind(&LR35902::mycpu_get_state, this, _1);;
-	myops.step = std::bind(&LR35902::mycpu_step, this, _1);
+	myops.step = std::bind(&LR35902::mycpu_step, this);
 
 	tester_run(&flags, &myops);
 	std::cout << "Test Finished!\n";
@@ -2012,7 +2012,7 @@ void LR35902::mycpu_get_state(state* state)
 	memcpy(state->mem_accesses, mem_accesses, sizeof(mem_accesses));
 }
 
-int LR35902::mycpu_step(uint8_t opCode)
+void LR35902::mycpu_step()
 {
 	std::cout << "executing an opcode" << std::endl;
 
@@ -2028,10 +2028,8 @@ int LR35902::mycpu_step(uint8_t opCode)
 	else
 	{
 		cycles = cycles_per_instruction[op];
-		ExecuteOpcode(opCode);
+		ExecuteOpcode(op);
 	}
-
-	return cycles;
 }
 
 uint16_t LR35902::mmu_read(uint16_t addr)

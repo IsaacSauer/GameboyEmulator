@@ -129,7 +129,7 @@ static int run_state(struct state *state, uint8_t opCode)
     tcpu_ops->set_state(state);
     rcpu_reset(state);
 
-    tcpu_ops->step(opCode);
+    tcpu_ops->step();
     rcpu_step();
 
     tcpu_ops->get_state(&tcpu_out_state);

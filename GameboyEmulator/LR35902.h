@@ -783,7 +783,7 @@ public:
 	Step a single instruction of the CPU. Returns the amount of cycles this took
 	(e.g., NOP should return 4).
 	*/
-	int mycpu_step(uint8_t opCode);
+	void mycpu_step();
 
 	/*
 	Example mock MMU implementation, mapping the tester's instruction memory

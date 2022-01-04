@@ -197,13 +197,20 @@ FINLINE void LR35902::RLC(uint8_t& toRotate)
 //RotateLeft
 FINLINE void LR35902::RL(uint8_t& toRotate)
 {
-	const bool msb{ bool(toRotate & 0x80) };
-	toRotate <<= 1;
-	toRotate |= (Register.flags.CF << 0);
+	uint8_t res = (toRotate << 1) | (Register.flags.CF ? 1 : 0);
+	Register.flags.ZF = res == 0;
+	Register.flags.NF = 0;
+	Register.flags.HF = 0;
+	Register.flags.CF = toRotate >>= 7;
+	toRotate = res;
 
-	Register.reg8.F = 7;
-	Register.flags.CF = msb;
-	Register.flags.ZF = !toRotate;
+	//const bool msb{ bool(toRotate & 0x80) };
+	//toRotate <<= 1;
+	//toRotate |= (Register.flags.CF << 0);
+
+	//Register.reg8.F = 7;
+	//Register.flags.CF = msb;
+	//Register.flags.ZF = !toRotate;
 }
 
 //RotateRightCarry
@@ -234,21 +241,41 @@ FINLINE void LR35902::RR(uint8_t& toRotate)
 }
 
 //ShiftLeftArithmetic (even though it's a logical shift..)
+/*
+Shift the contents of register toShift to the left.
+That is, the contents of bit 0 are copied to bit 1, and the previous contents of bit 1 (before the copy operation) are copied to bit 2.
+The same operation is repeated in sequence for the rest of the register.
+The contents of bit 7 are copied to the CY flag, and bit 0 of register toShift is reset to 0.
+*/
 FINLINE void LR35902::SLA(uint8_t& toShift)
 {
-	Register.reg8.F = 0;
-	Register.flags.CF = toShift & 0x80;
+	Register.flags.CF = toShift >> 7;
 	toShift <<= 1;
-	Register.flags.ZF = !toShift;
+	Register.flags.ZF = toShift == 0;
+	Register.flags.NF = 0;
+	Register.flags.HF = 0;
+
+	//Register.flags.CF = (toShift & 0x80) > 0;
+	//toShift <<= 1;
+	//toShift &= ~(1u << 0);
+	//Register.flags.ZF = !toShift;
+	//Register.flags.NF = 0;
+	//Register.flags.HF = 0;
 }
 
 //ShiftRightArithmetic
 FINLINE void LR35902::SRA(uint8_t& toShift)
 {
-	Register.reg8.F = 0;
-	Register.flags.CF = toShift & 0x1;
-	toShift >>= 1;
-	Register.flags.ZF = !toShift;
+	Register.flags.CF = toShift & 0x01;
+	toShift = (toShift >> 1) | (toShift & (1 << 7));
+	Register.flags.ZF = toShift == 0;
+	Register.flags.NF = 0;
+	Register.flags.HF = 0;
+
+	//Register.reg8.F = 0;
+	//Register.flags.CF = toShift & 0x1;
+	//toShift >>= 1;
+	//Register.flags.ZF = !toShift;
 }
 
 //ShiftRightLogical

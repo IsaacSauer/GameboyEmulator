@@ -208,7 +208,7 @@ void LR35902::ExecuteNextOpcodeTest()
 void LR35902::TestCPU()
 {
 	tester_flags flags{};
-	flags.keep_going_on_mismatch = 1;
+	flags.keep_going_on_mismatch = 0;
 	flags.enable_cb_instruction_testing = 1;
 	flags.print_tested_instruction = 1;
 	flags.print_verbose_inputs = 0;
@@ -1020,7 +1020,14 @@ uint8_t LR35902::ExecuteOpcodeCB(uint8_t opcode)
 	break;
 	case 0x1F:
 		OPCYCLE(RR(Register.reg8.A), 8);
+
 	case 0x20:
+		/*
+		Shift the contents of register B to the left.
+		That is, the contents of bit 0 are copied to bit 1, and the previous contents of bit 1 (before the copy operation) are copied to bit 2.
+		The same operation is repeated in sequence for the rest of the register.
+		The contents of bit 7 are copied to the CY flag, and bit 0 of register B is reset to 0.
+		*/
 		OPCYCLE(SLA(Register.reg8.B), 8);
 	case 0x21:
 		OPCYCLE(SLA(Register.reg8.C), 8);
@@ -1042,6 +1049,7 @@ uint8_t LR35902::ExecuteOpcodeCB(uint8_t opcode)
 	break;
 	case 0x27:
 		OPCYCLE(SLA(Register.reg8.A), 8);
+
 	case 0x38:
 		OPCYCLE(SRL(Register.reg8.B), 8);
 	case 0x39:
@@ -1064,6 +1072,7 @@ uint8_t LR35902::ExecuteOpcodeCB(uint8_t opcode)
 	break;
 	case 0x3F:
 		OPCYCLE(SRL(Register.reg8.A), 8);
+
 	case 0x00:
 		OPCYCLE(RLC(Register.reg8.B), 8);
 	case 0x01:

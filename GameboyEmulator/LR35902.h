@@ -92,7 +92,7 @@ struct Registers final
 		{ /* little-endian of x86 is not nice here. */
 			uint8_t C, B, E, D, L, H, F, A;
 		} reg8;
-		PACK(struct packed
+		struct
 		{
 			char padding[6];
 			uint8_t pad1 : 1;
@@ -103,7 +103,7 @@ struct Registers final
 			uint8_t HF : 1;
 			uint8_t NF : 1;
 			uint8_t ZF : 1;
-		} flags);
+		} flags;
 	};
 
 	uint16_t pc{}, sp{};

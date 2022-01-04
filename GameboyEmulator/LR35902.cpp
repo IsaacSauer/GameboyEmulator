@@ -115,7 +115,7 @@ void LR35902::Reset(const bool skipBoot)
 	}
 }
 
-uint8_t LR35902::ExecuteNextOpcode()
+void LR35902::ExecuteNextOpcode()
 {
 	uint8_t opcode{ Gameboy.ReadMemory(Register.pc++) };
 
@@ -203,8 +203,6 @@ void LR35902::ExecuteNextOpcodeTest()
 			InteruptChangePending = false;
 		}
 	}
-
-	return cycles;
 }
 
 void LR35902::TestCPU()

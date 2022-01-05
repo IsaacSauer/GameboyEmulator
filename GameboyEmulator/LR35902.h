@@ -694,7 +694,9 @@ private:
 	void SUB(uint8_t toSub) { return SBC(toSub, false); }
 
 	void ADC(uint8_t toAdd, bool addCarry = true);
-	void ADD16(bool addToHL, uint16_t toAdd);
+	void ADDToHL(uint16_t toAdd);
+	void ADDToSP();
+	void ADD16(uint16_t toAdd);
 	void AND(uint8_t toAnd);
 	void BITop(const uint8_t bit, const uint8_t data);
 	void CALL(uint16_t address, bool doCall = true);
@@ -716,9 +718,12 @@ private:
 	void RET(bool doReturn = true, bool handleCycles = true);
 	void RETI();
 	void RLC(uint8_t& toRotate);
+	void RLA(bool throughTheCarry);
 	void RL(uint8_t& toRotate);
 	void RRC(uint8_t& toRotate);
+	void RRCA();
 	void RR(uint8_t& toRotate);
+	void RRA();
 	void RST(const uint8_t address);
 	void LD(uint16_t* const dest, const uint16_t data);
 	void EI();

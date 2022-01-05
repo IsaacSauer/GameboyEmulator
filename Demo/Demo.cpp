@@ -143,7 +143,7 @@ int main(int argc, char* argv[])
 {
 	SDL_Init(SDL_INIT_EVERYTHING);
 
-	//emu.TestCPU();
+	emu.TestCPU();
 
 	//Choose rom
 	std::string path{};

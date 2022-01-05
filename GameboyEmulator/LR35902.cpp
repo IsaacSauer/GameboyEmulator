@@ -208,7 +208,7 @@ void LR35902::ExecuteNextOpcodeTest()
 void LR35902::TestCPU()
 {
 	tester_flags flags{};
-	flags.keep_going_on_mismatch = 0;
+	flags.keep_going_on_mismatch = 1;
 	flags.enable_cb_instruction_testing = 1;
 	flags.print_tested_instruction = 1;
 	flags.print_verbose_inputs = 0;
@@ -351,15 +351,15 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 	case 0xC6: //Add the contents of the 8-bit immediate operand d8 to the contents of register A, and store the results in register A.
 		OPCYCLE(ADD(Gameboy.ReadMemory(Register.pc++)), 8);
 	case 0xE8: //Add the contents of the 8-bit signed (2's complement) immediate operand s8 and the stack pointer SP and store the results in SP.
-		OPCYCLE(ADD16(false, Gameboy.ReadMemory(Register.pc++)), 16); //Might have to add this value to the pc
+		OPCYCLE(ADDToSP(), 16); //Might have to add this value to the pc
 	case 0x09: //Add the contents of register pair BC to the contents of register pair HL, and store the results in register pair HL.
-		OPCYCLE(ADD16(true, Register.reg16.BC), 8);
+		OPCYCLE(ADDToHL(Register.reg16.BC), 8);
 	case 0x19: //Add the contents of register pair DE to the contents of register pair HL, and store the results in register pair HL.
-		OPCYCLE(ADD16(true, Register.reg16.DE), 8);
+		OPCYCLE(ADDToHL( Register.reg16.DE), 8);
 	case 0x29: //Add the contents of register pair HL to the contents of register pair HL, and store the results in register pair HL.
-		OPCYCLE(ADD16(true, Register.reg16.HL), 8);
+		OPCYCLE(ADDToHL(Register.reg16.HL), 8);
 	case 0x39: //Add the contents of register pair SP to the contents of register pair HL, and store the results in register pair HL.
-		OPCYCLE(ADD16(true, Register.sp), 8);
+		OPCYCLE(ADDToHL(Register.sp), 8);
 
 	case 0xA0: //Take the logical AND for each bit of the contents of register B and the contents of register A, and store the results in register A.
 		OPCYCLE(AND(Register.reg8.B), 4);
@@ -634,10 +634,13 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 	break;
 	case 0xf8:
 	{
-		uint16_t temp{ Register.reg16.HL };
-		LD(&temp, Register.sp + (int8_t)Gameboy.ReadMemory(Register.pc++));
-		cycles = 12; //CodeSlinger:0
-		Register.reg16.HL = temp;
+		uint32_t resultingAddition = (uint32_t)Register.sp + (int8_t)Gameboy.ReadMemory(Register.pc);
+		Register.flags.ZF = 0;
+		Register.flags.NF = 0;
+		Register.flags.HF = (Register.sp & 0xf) + (Gameboy.ReadMemory(Register.pc) & 0xf) > 0xf;
+		Register.flags.CF = (Register.sp & 0xff) + (Gameboy.ReadMemory(Register.pc) & 0xff) > 0xff;
+		Register.reg16.HL = (uint16_t)resultingAddition;
+		Register.pc++;
 	}
 	break;
 	case 0x0a:
@@ -847,37 +850,15 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 		The same operation is repeated in sequence for the rest of the register.
 		The contents of bit 7 are placed in both the CY flag and bit 0 of register A.
 		*/
-		OPCYCLE(RLC(Register.reg8.A), 4); //Codeslinger: 8
+		OPCYCLE(RLA(false), 4); //Codeslinger: 8
 
-		//case 0x0F:
-		//	/*
-		//	Rotate the contents of register A to the right.
-		//	That is, the contents of bit 7 are copied to bit 6,
-		//	and the previous contents of bit 6 (before the copy) are copied to bit 5.
-		//	The same operation is repeated in sequence for the rest of the register.
-		//	The contents of bit 0 are placed in both the CY flag and bit 7 of register A.
-		//	*/
-		//	OPCYCLE(RRC(Register.reg8.A), 4); //Codeslinger: 8
 
-		//case 0x17:
-		//	/*
-		//	Rotate the contents of register A to the right, through the carry (CY) flag.
-		//	That is, the contents of bit 7 are copied to bit 6,
-		//	and the previous contents of bit 6 (before the copy) are copied to bit 5.
-		//	The same operation is repeated in sequence for the rest of the register.
-		//	The previous contents of the carry flag are copied to bit 7.
-		//	*/
-		//	OPCYCLE(RL(Register.reg8.A), 4); //Codeslinger: 8
+		//following opcodes were not in the original implementation of the emulator
+	case 0x0F: OPCYCLE(RRCA(), 4);
+	case 0x17: OPCYCLE(RLA(true), 4);
 
 	case 0x1F:
-		/*
-		Rotate the contents of register A to the right, through the carry (CY) flag.
-		That is, the contents of bit 7 are copied to bit 6,
-		and the previous contents of bit 6 (before the copy) are copied to bit 5.
-		The same operation is repeated in sequence for the rest of the register.
-		The previous contents of the carry flag are copied to bit 7.
-		*/
-		OPCYCLE(RR(Register.reg8.A), 4); //Codeslinger: 8
+		OPCYCLE(RRA(), 4); //Codeslinger: 8
 
 #pragma endregion
 #pragma region Misc
@@ -959,12 +940,6 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 		OPCYCLE(RST(0x28), 16);
 	case 0xFF:
 		OPCYCLE(RST(0x38), 16);
-#pragma endregion
-
-		//following opcodes were not in the original implementation of the emulator
-#pragma region missing opcodes
-	case 0x0F: OPCYCLE(RRC(Register.reg8.A), 4);
-	case 0x17: OPCYCLE(RL(Register.reg8.A), 4);
 #pragma endregion
 #ifdef _DEBUG
 	default:

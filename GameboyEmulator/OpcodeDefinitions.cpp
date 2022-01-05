@@ -20,35 +20,44 @@ FINLINE void LR35902::ADC(uint8_t toAdd, bool addCarry)
 	Register.flags.NF = 0;
 }
 
-/**
- * \param addToHL If False, it'll be added to SP and toAdd will be 8 bits signed
- */
-FINLINE void LR35902::ADD16(bool addToHL, uint16_t toAdd)
+FINLINE void LR35902::ADDToHL(uint16_t toAdd)
 {
-	if (addToHL)
-	{
-		Register.flags.HF = (Register.reg16.HL & 0xfff) + (toAdd & 0xfff) & 0x1000; //h is always 3->4 in the high byte
-		Register.flags.CF = static_cast<uint32_t>(Register.reg16.HL) + toAdd > 0xFFFF;
+	u32 toAddAddedToHL = Register.reg16.HL + toAdd;
+	Register.flags.NF = 0;
+	Register.flags.HF = (((Register.reg16.HL & 0xfff) + (toAdd & 0xfff)) & 0x1000) ? 1 : 0;
+	Register.flags.CF = toAddAddedToHL > 0xffff;
+	Register.reg16.HL = toAddAddedToHL;
+}
 
-		Register.reg16.HL = Register.reg16.HL + toAdd;
+FINLINE void LR35902::ADDToSP()
+{
+	int8_t off = (int8_t)Gameboy.ReadMemory(Register.pc);
+	uint32_t res = Register.sp + off;
+	Register.flags.ZF = 0;
+	Register.flags.NF = 0;
+	Register.flags.HF = (Register.sp & 0xf) + (Gameboy.ReadMemory(Register.pc) & 0xf) > 0xf;
+	Register.flags.CF = (Register.sp & 0xff) + (Gameboy.ReadMemory(Register.pc) & 0xff) > 0xff;
+	Register.sp = res;
+	Register.pc++;
+
+}
+
+FINLINE void LR35902::ADD16(uint16_t toAdd)
+{
+	const int8_t toAddS{ static_cast<int8_t>(toAdd) };
+	if (toAddS >= 0)
+	{ //Positive
+		Register.flags.HF = (Register.sp & 0xfff) + (toAdd & 0xfff) & 0x1000; //h is always 3->4 in the high byte
+		Register.flags.CF = static_cast<uint32_t>(Register.sp) + toAdd > 0xFFFF;
 	}
 	else
-	{
-		const int8_t toAddS{ static_cast<int8_t>(toAdd) };
-		if (toAddS >= 0)
-		{ //Positive
-			Register.flags.HF = (Register.sp & 0xfff) + (toAdd & 0xfff) & 0x1000; //h is always 3->4 in the high byte
-			Register.flags.CF = static_cast<uint32_t>(Register.sp) + toAdd > 0xFFFF;
-		}
-		else
-		{ //Negative
-			Register.flags.HF = static_cast<int16_t>(Register.sp & 0xf) + (toAddS & 0xf) <
-				0; // Check if subtracting the last 4 bits goes negative, indicating a borrow //Could also do ((Register.sp+toAddS)^toAddS^Register.sp)&0x10
-			Register.flags.CF = static_cast<uint32_t>(Register.sp) + toAddS < 0; //If we go negative, it would cause an underflow on unsigned, setting the carry
-		}
-		Register.sp += toAddS;
-		Register.flags.ZF = 0;
+	{ //Negative
+		Register.flags.HF = static_cast<int16_t>(Register.sp & 0xf) + (toAddS & 0xf) <
+			0; // Check if subtracting the last 4 bits goes negative, indicating a borrow //Could also do ((Register.sp+toAddS)^toAddS^Register.sp)&0x10
+		Register.flags.CF = static_cast<uint32_t>(Register.sp) + toAddS < 0; //If we go negative, it would cause an underflow on unsigned, setting the carry
 	}
+	Register.sp += toAddS;
+	Register.flags.ZF = 0;
 	Register.flags.NF = 0; //even tho we might've done a subtraction...
 }
 
@@ -127,30 +136,16 @@ FINLINE void LR35902::CP(uint8_t toCompare)
 //DecimalAdjustA, implementation heavily inspired by Richeson's paper
 FINLINE void LR35902::DAA()
 {
-	int newA{ Register.reg8.A };
-
-	if (!Register.flags.NF)
-	{
-		if (Register.flags.HF || (newA & 0xF) > 9) //if we did an initial overflow on the lower nibble or have exceeded 9 (the max value in BCD)
-			newA += 6; //Overflow (15-9)
-		if (Register.flags.CF || (newA & 0xF0) > 0x90)
-			newA += 0x60; //same overflow for the higher nibble
+	s8 add = 0;
+	if ((!Register.flags.NF && (Register.reg8.A & 0xf) > 0x9) || Register.flags.HF) //if we did an initial overflow on the lower nibble or have exceeded 9 (the max value in BCD)
+		add |= 0x6;
+	if ((!Register.flags.NF && Register.reg8.A > 0x99) || Register.flags.CF) {
+		add |= 0x60; //same overflow for the higher nibble
+		Register.flags.CF = 1;
 	}
-	else //The last operation was a subtraction, we need to honor this
-	{
-		if (Register.flags.HF)
-		{
-			newA -= 6;
-			newA &= 0xFF;
-		}
-		if (Register.flags.CF)
-			newA -= 0x60;
-	}
-
-	Register.flags.HF = false;
-	Register.flags.CF = newA > 0xFF;
-	Register.reg8.A = static_cast<uint8_t>(newA);
-	Register.flags.ZF = !Register.reg8.A;
+	Register.reg8.A += Register.flags.NF ? -add : add;
+	Register.flags.ZF = Register.reg8.A == 0;
+	Register.flags.HF = 0;
 }
 #pragma endregion
 
@@ -176,6 +171,10 @@ FINLINE void LR35902::PUSH(const uint16_t data) //little endian
 
 FINLINE void LR35902::POP(uint16_t& dest)
 {
+	//uint16_t* dst = REG16S(4);
+	//*dst = mmu_pop16(s);
+	//F = F & 0xf0;
+
 	dest = Gameboy.ReadMemory(Register.sp++);
 	dest |= (static_cast<uint16_t>(Gameboy.ReadMemory(Register.sp++)) << 8);
 }
@@ -192,6 +191,18 @@ FINLINE void LR35902::RLC(uint8_t& toRotate)
 	toRotate |= static_cast<uint8_t>(msb);
 	Register.flags.CF = msb;
 	Register.flags.ZF = !toRotate;
+}
+
+FINLINE void LR35902::RLA(bool throughTheCarry)
+{
+	uint8_t rotatedA;
+	if (throughTheCarry)
+		rotatedA = Register.reg8.A << 1 | (Register.flags.CF ? 1 : 0);
+	else
+		rotatedA = Register.reg8.A << 1 | Register.reg8.A >> 7;
+	
+	Register.reg8.F = Register.reg8.A & 1 << 7 ? 0x10 : 0;
+	Register.reg8.A = rotatedA;
 }
 
 //RotateLeft
@@ -217,7 +228,7 @@ FINLINE void LR35902::RL(uint8_t& toRotate)
 FINLINE void LR35902::RRC(uint8_t& toRotate)
 {
 	Register.reg8.F = 0;
-	const bool lsb{ bool(toRotate & 0x1) };
+	const bool lsb{ static_cast<bool>(toRotate & 0x1) };
 	toRotate = static_cast<uint8_t>((toRotate >> 1) | (lsb << 7));
 
 	//toRotate >>= 1;
@@ -226,6 +237,13 @@ FINLINE void LR35902::RRC(uint8_t& toRotate)
 	Register.flags.ZF = !toRotate;
 	Register.flags.HF = false;
 	Register.flags.NF = false;
+}
+
+//RotateRightRegisterA
+FINLINE void LR35902::RRCA()
+{
+	Register.reg8.F = Register.reg8.A & 1 ? 0x10 : 0;
+	Register.reg8.A = Register.reg8.A >> 1 | (Register.reg8.A & 1) << 7;
 }
 
 //RotateRight
@@ -238,6 +256,17 @@ FINLINE void LR35902::RR(uint8_t& toRotate)
 	Register.reg8.F = 0;
 	Register.flags.CF = lsb;
 	Register.flags.ZF = !toRotate;
+}
+
+//RotateRegisterARight
+FINLINE void LR35902::RRA()
+{
+	const uint8_t resultingRotation = Register.reg8.A >> 1 | Register.flags.CF << 7;
+	Register.flags.ZF = 0;
+	Register.flags.NF = 0;
+	Register.flags.HF = 0;
+	Register.flags.CF = Register.reg8.A & 0x1;
+	Register.reg8.A = resultingRotation;
 }
 
 //ShiftLeftArithmetic (even though it's a logical shift..)
@@ -318,8 +347,9 @@ FINLINE void LR35902::SWAP(uint8_t& data)
 //ComplementCarryFlag
 FINLINE void LR35902::CCF()
 {
-	Register.flags.HF = Register.flags.ZF = 0;
-	Register.flags.CF = !Register.flags.CF;
+	Register.flags.CF = Register.flags.CF ? 0 : 1;
+	Register.flags.NF = 0;
+	Register.flags.HF = 0;
 }
 
 FINLINE void LR35902::SCF()
@@ -328,10 +358,10 @@ FINLINE void LR35902::SCF()
 	Register.flags.CF = 1;
 }
 
-FINLINE void LR35902::HALT() { --Register.pc; } //Until an interrupt
-FINLINE void LR35902::STOP() { --Register.pc; } //Until button press
-FINLINE void LR35902::DI() { *(uint8_t*)&InteruptChangePending = 1; }
-FINLINE void LR35902::EI() { *((uint8_t*)&InteruptChangePending) = 8; }
+FINLINE void LR35902::HALT() { Gameboy.SetPaused(true); } //Until an interrupt
+FINLINE void LR35902::STOP() { Gameboy.SetPaused(true); }//Until button press
+FINLINE void LR35902::DI() { InteruptsEnabled = 0; }
+FINLINE void LR35902::EI() { InteruptsEnabled = 1; }
 FINLINE void LR35902::NOP() {}
 
 //ComPlemenT

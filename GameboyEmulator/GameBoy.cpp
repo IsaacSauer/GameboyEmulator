@@ -224,6 +224,7 @@ GameHeader GameBoy::ReadHeader()
 	case 0x1d:
 	case 0x1e:
 		header.mbc = mbc5;
+		break;
 	default:
 		assert(Rom[0x147] == 0x0); //if not 0x0 it's undocumented
 	}

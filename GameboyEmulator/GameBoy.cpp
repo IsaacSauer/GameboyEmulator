@@ -38,7 +38,8 @@ void GameBoy::LoadGame(const std::string& gbFile)
 	switch (header.ramSizeValue)
 	{
 	case 0x00:
-		banksNeeded = 0;
+		banksNeeded = 1;
+		RamBanks.resize(banksNeeded * 0x8000);
 		break;
 	case 0x01:
 		switch (Mbc)

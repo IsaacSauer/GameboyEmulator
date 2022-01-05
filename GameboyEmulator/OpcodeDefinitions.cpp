@@ -35,17 +35,6 @@ FINLINE void LR35902::ADC(uint8_t toAdd)
 	Register.flags.HF = (Register.reg8.A ^ toAdd ^ result) & 0x10 ? 1 : 0;
 	Register.flags.CF = result & 0x100 ? 1 : 0;
 	Register.reg8.A = (uint8_t)result;
-
-	//if (addCarry && Register.flags.CF)
-	//	++toAdd;
-
-	//Register.flags.HF = (Register.reg8.A & 0xf) + (toAdd & 0xf) & 0x10;
-	//Register.flags.CF = static_cast<uint16_t>(Register.reg8.A + toAdd) > 0xFF;
-
-	//Register.reg8.A += toAdd;
-
-	//Register.flags.ZF = !Register.reg8.A;
-	//Register.flags.NF = 0;
 }
 
 FINLINE void LR35902::ADDToHL(uint16_t toAdd)
@@ -165,7 +154,8 @@ FINLINE void LR35902::DAA()
 	s8 add = 0;
 	if ((!Register.flags.NF && (Register.reg8.A & 0xf) > 0x9) || Register.flags.HF) //if we did an initial overflow on the lower nibble or have exceeded 9 (the max value in BCD)
 		add |= 0x6;
-	if ((!Register.flags.NF && Register.reg8.A > 0x99) || Register.flags.CF) {
+	if ((!Register.flags.NF && Register.reg8.A > 0x99) || Register.flags.CF)
+	{
 		add |= 0x60; //same overflow for the higher nibble
 		Register.flags.CF = 1;
 	}
@@ -200,10 +190,6 @@ FINLINE void LR35902::POP(uint16_t& dest)
 	u16 val = Gameboy.ReadMemoryWord(Register.sp);
 	dest = val;
 	Register.reg8.F = Register.reg8.F & 0xf0;
-
-	//dest = Gameboy.ReadMemory(Register.sp++);
-	//dest |= (static_cast<uint16_t>(Gameboy.ReadMemory(Register.sp++)) << 8);
-	//Register.reg8.F = Register.reg8.F & 0xf0;
 }
 #pragma endregion
 
@@ -241,14 +227,6 @@ FINLINE void LR35902::RL(uint8_t& toRotate)
 	Register.flags.HF = 0;
 	Register.flags.CF = toRotate >>= 7;
 	toRotate = res;
-
-	//const bool msb{ bool(toRotate & 0x80) };
-	//toRotate <<= 1;
-	//toRotate |= (Register.flags.CF << 0);
-
-	//Register.reg8.F = 7;
-	//Register.flags.CF = msb;
-	//Register.flags.ZF = !toRotate;
 }
 
 //RotateRightCarry
@@ -257,9 +235,7 @@ FINLINE void LR35902::RRC(uint8_t& toRotate)
 	Register.reg8.F = 0;
 	const bool lsb{ static_cast<bool>(toRotate & 0x1) };
 	toRotate = static_cast<uint8_t>((toRotate >> 1) | (lsb << 7));
-
-	//toRotate >>= 1;
-	//toRotate |= uint8_t(lsb);
+	
 	Register.flags.CF = lsb;
 	Register.flags.ZF = !toRotate;
 	Register.flags.HF = false;
@@ -310,13 +286,6 @@ FINLINE void LR35902::SLA(uint8_t& toShift)
 	Register.flags.ZF = toShift == 0;
 	Register.flags.NF = 0;
 	Register.flags.HF = 0;
-
-	//Register.flags.CF = (toShift & 0x80) > 0;
-	//toShift <<= 1;
-	//toShift &= ~(1u << 0);
-	//Register.flags.ZF = !toShift;
-	//Register.flags.NF = 0;
-	//Register.flags.HF = 0;
 }
 
 //ShiftRightArithmetic
@@ -327,11 +296,6 @@ FINLINE void LR35902::SRA(uint8_t& toShift)
 	Register.flags.ZF = toShift == 0;
 	Register.flags.NF = 0;
 	Register.flags.HF = 0;
-
-	//Register.reg8.F = 0;
-	//Register.flags.CF = toShift & 0x1;
-	//toShift >>= 1;
-	//Register.flags.ZF = !toShift;
 }
 
 //ShiftRightLogical
@@ -414,6 +378,7 @@ FINLINE void LR35902::CALL(const uint16_t address, bool doCall)
 	else
 		Gameboy.AddCycles(12);
 }
+
 /**
  * \note	<b>This function handles adding the cycles!</b>
  */

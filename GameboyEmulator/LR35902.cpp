@@ -325,12 +325,12 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 		- 0x8C: Add the contents of register H and the CY flag to the contents of register A, and store the results in register A.
 		- 0x8D: Add the contents of register L and the CY flag to the contents of register A, and store the results in register A.
 		*/
-		BASICOPS(0x8F, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 4, ADC, , true);
+		BASICOPS(0x8F, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 4, ADC);
 
 	case 0x8E: //Add the contents of memory specified by register pair HL and the CY flag to the contents of register A, and store the results in register A.
-		OPCYCLE(ADC(Gameboy.ReadMemory(Register.reg16.HL), true), 8);
+		OPCYCLE(ADC(Gameboy.ReadMemory(Register.reg16.HL)), 8);
 	case 0xCE: //Add the contents of the 8-bit immediate operand d8 and the CY flag to the contents of register A, and store the results in register A.
-		OPCYCLE(ADC(Gameboy.ReadMemory(Register.pc++), true), 8);
+		OPCYCLE(ADC(Gameboy.ReadMemory(Register.pc++)), 8);
 
 	case 0x80: //Add the contents of register B to the contents of register A, and store the results in register A.
 		OPCYCLE(ADD(Register.reg8.B), 4);
@@ -532,11 +532,11 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 		-0x9C: Subtract the contents of register H and the CY flag from the contents of register A, and store the results in register A.
 		-0x9D: Subtract the contents of register L and the CY flag from the contents of register A, and store the results in register A.
 		*/
-		BASICOPS(0x9F, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 4, SBC, , true);
+		BASICOPS(0x9F, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 4, SBC);
 
 	case 0x9E:
 		//Subtract the contents of memory specified by register pair HL and the carry flag CY from the contents of register A, //and store the results in register A.
-		OPCYCLE(SBC(Gameboy.ReadMemory(Register.reg16.HL), true), 8);
+		OPCYCLE(SBC(Gameboy.ReadMemory(Register.reg16.HL)), 8);
 
 	case 0xDE:
 		//Subtract the contents of the 8-bit immediate operand d8 and the carry flag CY from the contents of register A, //and store the results in register A.
@@ -799,38 +799,13 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 	}
 	break;
 	case 0xC1:
-	{
-		uint16_t temp;
-		POP(temp);
-		Register.reg16.BC = temp;
-		cycles = 12;
-	}
-	break;
+		OPCYCLE(POP(Register.reg16.BC), 12);
 	case 0xD1:
-	{
-		uint16_t temp;
-		POP(temp);
-		Register.reg16.DE = temp;
-		cycles = 12;
-	}
-	break;
+		OPCYCLE(POP(Register.reg16.DE), 12);
 	case 0xE1:
-	{
-		uint16_t temp;
-		POP(temp);
-		Register.reg16.HL = temp;
-		cycles = 12;
-	}
-	break;
+		OPCYCLE(POP(Register.reg16.HL), 12);
 	case 0xF1:
-	{
-		uint16_t temp;
-		POP(temp);
-		Register.reg16.AF = temp;
-		cycles = 12;
-	}
-	break;
-
+		OPCYCLE(POP(Register.reg16.AF), 12);
 	case 0xC5:
 		OPCYCLE(PUSH(Register.reg16.BC), 16);
 	case 0xD5:

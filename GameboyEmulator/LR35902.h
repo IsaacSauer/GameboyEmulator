@@ -690,10 +690,10 @@ private:
 
 	// ReSharper disable CppInconsistentNaming
 #pragma region OPCODES
-	void ADD(uint8_t toAdd) { return ADC(toAdd, false); }
-	void SUB(uint8_t toSub) { return SBC(toSub, false); }
+	void ADD(uint8_t toAdd);
+	void SUB(uint8_t toSub);
 
-	void ADC(uint8_t toAdd, bool addCarry = true);
+	void ADC(uint8_t toAdd);
 	void ADDToHL(uint16_t toAdd);
 	void ADDToSP();
 	void ADD16(uint16_t toAdd);
@@ -731,7 +731,7 @@ private:
 	void SET(const uint8_t bit, uint8_t& data);
 	void SLA(uint8_t& toShift);
 	void SRA(uint8_t& toShift);
-	void SBC(uint8_t toSub, bool subCarry = true);
+	void SBC(uint8_t toSub);
 	void SRL(uint8_t& toShift);
 	void STOP();
 	void SWAP(uint8_t& data);

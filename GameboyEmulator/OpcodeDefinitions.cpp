@@ -4,20 +4,48 @@
 //Add the signature to LR35902.h
 
 #pragma region ALU
+
+FINLINE void LR35902::ADD(uint8_t toAdd)
+{
+	uint16_t result = Register.reg8.A + toAdd;
+	Register.flags.ZF = (uint8_t)result == 0;
+	Register.flags.NF = 0;
+	Register.flags.HF = (Register.reg8.A ^ toAdd ^ result) & 0x10 ? 1 : 0;
+	Register.flags.CF = result & 0x100 ? 1 : 0;
+	Register.reg8.A = (uint8_t)result;
+}
+
+FINLINE void LR35902::SUB(uint8_t toSub)
+{
+	uint8_t result = Register.reg8.A - toSub;
+	Register.flags.ZF = result == 0;
+	Register.flags.NF = 1;
+	Register.flags.HF = ((int32_t)Register.reg8.A & 0xf) - (toSub & 0xf) < 0;
+	Register.flags.CF = Register.reg8.A < toSub;
+	Register.reg8.A = result;
+}
+
 //Add Carry
 //Add the contents of register A and the x flag to the contents of register x, and store the results in register A.
-FINLINE void LR35902::ADC(uint8_t toAdd, bool addCarry)
+FINLINE void LR35902::ADC(uint8_t toAdd)
 {
-	if (addCarry && Register.flags.CF)
-		++toAdd;
-
-	Register.flags.HF = (Register.reg8.A & 0xf) + (toAdd & 0xf) & 0x10;
-	Register.flags.CF = static_cast<uint16_t>(Register.reg8.A + toAdd) > 0xFF;
-
-	Register.reg8.A += toAdd;
-
-	Register.flags.ZF = !Register.reg8.A;
+	u16 result = Register.reg8.A + toAdd + Register.flags.CF;
+	Register.flags.ZF = (uint8_t)result == 0;
 	Register.flags.NF = 0;
+	Register.flags.HF = (Register.reg8.A ^ toAdd ^ result) & 0x10 ? 1 : 0;
+	Register.flags.CF = result & 0x100 ? 1 : 0;
+	Register.reg8.A = (uint8_t)result;
+
+	//if (addCarry && Register.flags.CF)
+	//	++toAdd;
+
+	//Register.flags.HF = (Register.reg8.A & 0xf) + (toAdd & 0xf) & 0x10;
+	//Register.flags.CF = static_cast<uint16_t>(Register.reg8.A + toAdd) > 0xFF;
+
+	//Register.reg8.A += toAdd;
+
+	//Register.flags.ZF = !Register.reg8.A;
+	//Register.flags.NF = 0;
 }
 
 FINLINE void LR35902::ADDToHL(uint16_t toAdd)
@@ -61,16 +89,14 @@ FINLINE void LR35902::ADD16(uint16_t toAdd)
 	Register.flags.NF = 0; //even tho we might've done a subtraction...
 }
 
-FINLINE void LR35902::SBC(uint8_t toSub, bool subCarry)
+FINLINE void LR35902::SBC(uint8_t toSub)
 {
-	if (subCarry && Register.flags.CF)
-		++toSub;
-
-	Register.flags.HF = ((Register.reg8.A - toSub) ^ toSub ^ Register.reg8.A) & 0x10;
-	Register.flags.CF = (static_cast<int8_t>(Register.reg8.A) - toSub) < 0;
-	Register.flags.ZF = !Register.reg8.A;
+	uint8_t result = Register.reg8.A - toSub - Register.flags.CF;
+	Register.flags.ZF = result == 0;
 	Register.flags.NF = 1;
-	Register.reg8.A -= toSub;
+	Register.flags.HF = ((int32_t)Register.reg8.A & 0xf) - (toSub & 0xf) - Register.flags.CF < 0;
+	Register.flags.CF = Register.reg8.A < toSub + Register.flags.CF;
+	Register.reg8.A = result;
 }
 
 FINLINE void LR35902::OR(const uint8_t toOr)
@@ -171,12 +197,15 @@ FINLINE void LR35902::PUSH(const uint16_t data) //little endian
 
 FINLINE void LR35902::POP(uint16_t& dest)
 {
-	//uint16_t* dst = REG16S(4);
-	//*dst = mmu_pop16(s);
-	//F = F & 0xf0;
 
-	dest = Gameboy.ReadMemory(Register.sp++);
-	dest |= (static_cast<uint16_t>(Gameboy.ReadMemory(Register.sp++)) << 8);
+	u16 val = Gameboy.ReadMemory(Register.sp);
+	Register.sp += 2;
+	dest = val;
+	Register.reg8.F = Register.reg8.F & 0xf0;
+
+	//dest = Gameboy.ReadMemory(Register.sp++);
+	//dest |= (static_cast<uint16_t>(Gameboy.ReadMemory(Register.sp++)) << 8);
+	//Register.reg8.F = Register.reg8.F & 0xf0;
 }
 #pragma endregion
 

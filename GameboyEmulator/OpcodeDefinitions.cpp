@@ -197,9 +197,7 @@ FINLINE void LR35902::PUSH(const uint16_t data) //little endian
 
 FINLINE void LR35902::POP(uint16_t& dest)
 {
-
-	u16 val = Gameboy.ReadMemory(Register.sp);
-	Register.sp += 2;
+	u16 val = Gameboy.ReadMemoryWord(Register.sp);
 	dest = val;
 	Register.reg8.F = Register.reg8.F & 0xf0;
 

@@ -131,7 +131,7 @@ std::string int_to_hex(T i)
 {
 	std::stringstream stream;
 	stream << "0x"
-		<< std::setfill('0') << std::setw(sizeof(T)*2)
+		<< std::setfill('0') << std::setw(sizeof(T) * 2)
 		<< std::hex << i;
 	return stream.str();
 }
@@ -310,7 +310,7 @@ int disassemble(u8* data, std::vector<std::string>& outOpcodes)
 		}
 		mnem++;
 	}
-	
+
 	pc = data[0];
 	if (pc == 0xcb)
 	{
@@ -331,4 +331,138 @@ std::string disassembleToString(u8* data)
 	std::vector<std::string> str{};
 	disassemble(data, str);
 	return str.front();
+}
+
+std::string disassembleToString(uint8_t data)
+{
+	u16 pc = 0;
+	u8 opcode = data;
+	GBOPCODE* op = NULL;
+	const char* mnem = NULL;
+
+	op = opcodes;
+
+	while ((opcode & op->mask) != op->value)
+		op++;
+
+	mnem = op->mnem;
+	std::string mnems{ };
+
+	u8 temp1, temp2;
+	s8 stemp;
+
+	while (*mnem)
+	{
+		if (*mnem == '%')
+		{
+			mnem++;
+			switch (*mnem)
+			{
+			case 'r': /* Register name */
+				temp1 = *(++mnem) - '0';
+				mnems += string_format("%s", registers[(opcode >> temp1) & 7]);
+				break;
+			case 'R': /* 16 bit register name (double reg) */
+				temp1 = *(++mnem) - '0';
+				mnems += string_format("%s", registers16[(opcode >> temp1) & 3]);
+				break;
+			case 't': /* 16 bit register name (double reg) for push/pop */
+				temp1 = *(++mnem) - '0';
+				mnems += string_format("%s", registers16[4 + ((opcode >> temp1) & 3)]);
+				break;
+			case 'c': /* condition flag name */
+				temp1 = *(++mnem) - '0';
+				mnems += string_format("%s", conditions[(opcode >> temp1) & 3]);
+				break;
+			case 'b': /* bit number of CB bit instruction */
+				temp1 = (opcode >> 3) & 7;
+				mnems += string_format("%x", temp1);
+				break;
+			case 'P': /* RST address */
+				temp1 = ((opcode >> 3) & 7) * 8;
+				//mnems += string_format("0x%x", temp1);
+				break;
+			default:
+				mnems += string_format("%%%c", *mnem);
+				break;
+			}
+		}
+		else
+		{
+			mnems += *mnem;
+		}
+		mnem++;
+	}
+
+	pc = data;
+
+	return int_to_hex(pc) + '\t' + mnems;
+}
+
+std::string disassembleCBToString(uint8_t data)
+{
+	u16 pc = 0;
+	u8 opcode = data;
+	GBOPCODE* op = NULL;
+	const char* mnem = NULL;
+
+	op = cbOpcodes;
+
+	while ((opcode & op->mask) != op->value)
+		op++;
+
+	mnem = op->mnem;
+	std::string mnems{ };
+
+	u8 temp1, temp2;
+	s8 stemp;
+
+	while (*mnem)
+	{
+		if (*mnem == '%')
+		{
+			mnem++;
+			switch (*mnem)
+			{
+			case 'r': /* Register name */
+				temp1 = *(++mnem) - '0';
+				mnems += string_format("%s", registers[(opcode >> temp1) & 7]);
+				break;
+			case 'R': /* 16 bit register name (double reg) */
+				temp1 = *(++mnem) - '0';
+				mnems += string_format("%s", registers16[(opcode >> temp1) & 3]);
+				break;
+			case 't': /* 16 bit register name (double reg) for push/pop */
+				temp1 = *(++mnem) - '0';
+				mnems += string_format("%s", registers16[4 + ((opcode >> temp1) & 3)]);
+				break;
+			case 'c': /* condition flag name */
+				temp1 = *(++mnem) - '0';
+				mnems += string_format("%s", conditions[(opcode >> temp1) & 3]);
+				break;
+			case 'b': /* bit number of CB bit instruction */
+				temp1 = (opcode >> 3) & 7;
+				mnems += string_format("%x", temp1);
+				break;
+			case 'P': /* RST address */
+				temp1 = ((opcode >> 3) & 7) * 8;
+				//mnems += string_format("0x%x", temp1);
+				break;
+			default:
+				mnems += string_format("%%%c", *mnem);
+				break;
+			}
+		}
+		else
+		{
+			mnems += *mnem;
+		}
+		mnem++;
+	}
+
+	pc = 0xcb;
+	pc *= 0x100;
+	pc += data;
+
+	return int_to_hex(pc) + '\t' + mnems;
 }

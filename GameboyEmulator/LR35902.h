@@ -664,7 +664,6 @@ private:
 		{0xff, "RST 38H"}
 	};
 
-	void LogRequiredOpcodes();
 	std::vector<unsigned int> m_RequiredOpcodes;
 #endif
 

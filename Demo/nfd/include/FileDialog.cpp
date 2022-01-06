@@ -1,5 +1,4 @@
 //Interface by Isaac Sauer
-
 #include "FileDialog.h"
 #include "nfd.h"
 

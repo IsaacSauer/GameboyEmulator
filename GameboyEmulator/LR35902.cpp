@@ -53,16 +53,9 @@ static int cycles_per_instruction_cb[] = {
 	   8,  8,  8,  8,  8,  8, 16,  8,  8,  8,  8,  8,  8,  8, 16,  8, /* f */
 };
 
-LR35902::LR35902(GameBoy& gameboy) : Gameboy{ gameboy }
+LR35902::LR35902(GameBoy& gameboy)
+	: Gameboy{ gameboy }
 {
-	//TODO: Investigate Threading Bottleneck
-	/*for (uint8_t i{ 0 }; i < 10; ++i) {
-		DrawThreads[i] = std::thread{&LR35902::ThreadWork, this, i, &DrawDataStruct};
-	}*/
-
-#ifdef _DEBUG
-	m_RequiredOpcodes = std::vector<unsigned int>(0xff + 1);
-#endif // _DEBUG
 }
 
 void LR35902::Reset(const bool skipBoot)
@@ -118,7 +111,7 @@ void LR35902::Reset(const bool skipBoot)
 
 void LR35902::ExecuteNextOpcode()
 {
-	uint8_t opcode{ Gameboy.ReadMemory(Register.pc++) };
+	m_opcode = Gameboy.ReadMemory(Register.pc++);
 
 #ifdef VERBOSE
 	static bool ok{};
@@ -138,13 +131,13 @@ void LR35902::ExecuteNextOpcode()
 	}
 #endif
 
-	if (opcode == 0xcb)
+	if (m_opcode == 0xcb)
 	{
-		opcode = Gameboy.ReadMemory(Register.pc++);
-		ExecuteOpcodeCB(opcode);
+		m_opcode = Gameboy.ReadMemory(Register.pc++);
+		ExecuteOpcodeCB();
 	}
 	else
-		ExecuteOpcode(opcode);
+		ExecuteOpcode();
 
 	if (InteruptChangePending)
 	{
@@ -163,7 +156,7 @@ void LR35902::ExecuteNextOpcode()
 
 void LR35902::ExecuteNextOpcodeTest()
 {
-	uint8_t opcode{ (uint8_t)mmu_read(Register.pc++) };
+	m_opcode = (uint8_t)mmu_read(Register.pc++);
 
 #ifdef VERBOSE
 	static bool ok{};
@@ -183,13 +176,16 @@ void LR35902::ExecuteNextOpcodeTest()
 	}
 #endif
 
-	if (opcode == 0xcb)
+	if (m_opcode == 0xcb)
 	{
-		opcode = (uint8_t)mmu_read(Register.pc++);
-		ExecuteOpcodeCB(opcode);
+		m_opcode = (uint8_t)mmu_read(Register.pc++);
+		ExecuteOpcodeCB();
 	}
 	else
-		ExecuteOpcode(opcode);
+		ExecuteOpcode();
+
+	if (EnteringHalt)
+		--Register.pc;
 
 	if (InteruptChangePending)
 	{
@@ -301,8 +297,9 @@ void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, 
 	case H1: OPCYCLE( funcName( Register.reg8.H __VA_ARGS__), cycles ); \
 	case L1: OPCYCLE( funcName( Register.reg8.L __VA_ARGS__), cycles )
 
-uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
+uint8_t LR35902::ExecuteOpcode()
 {
+	uint8_t opcode = m_opcode;
 	//assert(Gameboy.ReadMemory(Register.pc - 1) == opcode); //pc is pointing to first argument
 	uint8_t cycles{ (uint8_t)cycles_per_instruction[opcode] };
 
@@ -938,8 +935,9 @@ uint8_t LR35902::ExecuteOpcode(uint8_t opcode)
 	return cycles;
 }
 
-uint8_t LR35902::ExecuteOpcodeCB(uint8_t opcode)
+uint8_t LR35902::ExecuteOpcodeCB()
 {
+	uint8_t opcode = m_opcode;
 	//assert(Gameboy.ReadMemory(Register.pc - 1) == opcode); //pc is pointing to first argument
 	uint8_t cycles{ (uint8_t)cycles_per_instruction_cb[opcode] };
 
@@ -1927,7 +1925,7 @@ void LR35902::mycpu_get_state(state* state)
 	state->reg8.H = Register.reg8.H;
 	state->reg8.L = Register.reg8.L;
 
-	state->halted = Gameboy.GetPaused();
+	state->halted = EnteringHalt;
 	state->interrupts_master_enabled = InteruptsEnabled;
 
 	state->num_mem_accesses = num_mem_accesses;
@@ -1938,19 +1936,18 @@ void LR35902::mycpu_step()
 {
 	//std::cout << "executing an opcode" << std::endl;
 
-	u8 op;
 	int cycles = 0;
-	op = (uint8_t)mmu_read(Register.pc++);
-	if (op == 0xcb)
+	m_opcode = (uint8_t)mmu_read(Register.pc++);
+	if (m_opcode == 0xcb)
 	{
-		op = (uint8_t)mmu_read(Register.pc++);
-		cycles = cycles_per_instruction_cb[op];
-		ExecuteOpcodeCB(op);
+		m_opcode = (uint8_t)mmu_read(Register.pc++);
+		cycles = cycles_per_instruction_cb[m_opcode];
+		ExecuteOpcodeCB();
 	}
 	else
 	{
-		cycles = cycles_per_instruction[op];
-		ExecuteOpcode(op);
+		cycles = cycles_per_instruction[m_opcode];
+		ExecuteOpcode();
 	}
 }
 

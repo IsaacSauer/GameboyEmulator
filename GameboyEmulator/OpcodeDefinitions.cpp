@@ -56,7 +56,6 @@ FINLINE void LR35902::ADDToSP()
 	Register.flags.CF = (Register.sp & 0xff) + (Gameboy.ReadMemory(Register.pc) & 0xff) > 0xff;
 	Register.sp = res;
 	Register.pc++;
-
 }
 
 FINLINE void LR35902::ADD16(uint16_t toAdd)
@@ -213,7 +212,7 @@ FINLINE void LR35902::RLA(bool throughTheCarry)
 		rotatedA = Register.reg8.A << 1 | (Register.flags.CF ? 1 : 0);
 	else
 		rotatedA = Register.reg8.A << 1 | Register.reg8.A >> 7;
-	
+
 	Register.reg8.F = Register.reg8.A & 1 << 7 ? 0x10 : 0;
 	Register.reg8.A = rotatedA;
 }
@@ -235,7 +234,7 @@ FINLINE void LR35902::RRC(uint8_t& toRotate)
 	Register.reg8.F = 0;
 	const bool lsb{ static_cast<bool>(toRotate & 0x1) };
 	toRotate = static_cast<uint8_t>((toRotate >> 1) | (lsb << 7));
-	
+
 	Register.flags.CF = lsb;
 	Register.flags.ZF = !toRotate;
 	Register.flags.HF = false;
@@ -349,8 +348,57 @@ FINLINE void LR35902::SCF()
 	Register.flags.CF = 1;
 }
 
-FINLINE void LR35902::HALT() { Gameboy.SetPaused(true); } //Until an interrupt
-FINLINE void LR35902::STOP() { Gameboy.SetPaused(true); }//Until button press
+/*
+After a HALT instruction is executed, the system clock is stopped and HALT mode is entered.
+Although the system clock is stopped in this status,
+the oscillator circuit and LCD controller continue to operate.
+
+In addition, the status of the internal RAM register ports remains unchanged.
+
+HALT mode is cancelled by an interrupt or reset signal.
+
+The program counter is halted at the step after the HALT instruction.
+If both the interrupt request flag and the corresponding interrupt enable flag are set,
+HALT mode is exited, even if the interrupt master enable flag is not set.
+
+Once HALT mode is cancelled, the program starts from the address indicated by the program counter.
+
+If the interrupt master enable flag is set,
+the contents of the program coounter are pushed to the stack
+and control jumps to the starting address of the interrupt.
+
+If the RESET terminal goes LOW in HALT mode,
+the mode becomes that of a normal reset.
+*/
+FINLINE void LR35902::HALT()
+{
+	//Until an interrupt
+	//Gameboy.SetPaused(true);
+	EnteringHalt = true;
+	--Register.pc;
+}
+
+/*
+Execution of a STOP instruction stops both the system clock and oscillator circuit.
+STOP mode is entered and the LCD controller also stops.
+However, the status of the internal RAM register ports remains unchanged.
+
+STOP mode can be cancelled by a reset signal.
+
+If the RESET terminal goes LOW in STOP mode, it becomes that of a normal reset status.
+
+The following conditions should be met before a STOP instruction is executed and stop mode is entered:
+
+-All interrupt-enable (IE) flags are reset.
+-Input to P10-P13 is LOW for all.
+*/
+FINLINE void LR35902::STOP()
+{
+	//Until button press
+	//Gameboy.SetPaused(true);
+	--Register.pc;
+}
+
 FINLINE void LR35902::DI() { InteruptsEnabled = 0; }
 FINLINE void LR35902::EI() { InteruptsEnabled = 1; }
 FINLINE void LR35902::NOP() {}

@@ -29,7 +29,8 @@ void GameBoy::LoadGame(const std::string& gbFile)
 
 	file.close();
 
-	Disassemble();
+	////Disassmble required opcodes to txt file
+	//Disassemble();
 
 	const GameHeader header{ ReadHeader() };
 	Mbc = header.mbc;

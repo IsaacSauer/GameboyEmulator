@@ -667,6 +667,9 @@ private:
 	std::vector<unsigned int> m_RequiredOpcodes;
 #endif
 
+	uint8_t m_opcode;
+	bool EnteringHalt = false;
+
 	Registers Register{};
 	std::thread DrawThreads[10];
 	GameBoy& Gameboy;
@@ -675,8 +678,8 @@ private:
 	bool InteruptsEnabled{ false }; ///< InteruptsMasterEnable
 	bool InteruptChangePending{ false }; ///< When an interupt change is requested, it gets pushed after the next opcode\note lsb==Disable, msb==Enable
 
-	uint8_t ExecuteOpcode(uint8_t opcode);
-	uint8_t ExecuteOpcodeCB(uint8_t opcode);
+	uint8_t ExecuteOpcode();
+	uint8_t ExecuteOpcodeCB();
 	void ConfigureLCDStatus();
 	void DrawLine() const;
 	void DrawBackground() const;

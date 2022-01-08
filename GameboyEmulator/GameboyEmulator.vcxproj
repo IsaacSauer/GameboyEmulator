@@ -175,6 +175,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="bitwise.h" />
+    <ClInclude Include="Cartridge.h" />
+    <ClInclude Include="CartridgeInfo.h" />
     <ClInclude Include="EmulatorClean.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClInclude>
@@ -188,8 +191,11 @@
     <ClInclude Include="opc_test\ref_cpu.h" />
     <ClInclude Include="opc_test\tester.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Register.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Cartridge.cpp" />
+    <ClCompile Include="CartridgeInfo.cpp" />
     <ClCompile Include="LR35902.cpp" />
     <ClCompile Include="Emulator.cpp" />
     <ClCompile Include="GameBoy.cpp" />
@@ -224,6 +230,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Register.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\Tetris(JUE)(V1.1)[!].gb">

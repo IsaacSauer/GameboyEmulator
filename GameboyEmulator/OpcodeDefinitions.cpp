@@ -374,8 +374,8 @@ FINLINE void LR35902::HALT()
 {
 	//Until an interrupt
 	//Gameboy.SetPaused(true);
-	EnteringHalt = true;
-	--Register.pc;
+	Halted = true;
+	//--Register.pc;
 }
 
 /*
@@ -396,7 +396,7 @@ FINLINE void LR35902::STOP()
 {
 	//Until button press
 	//Gameboy.SetPaused(true);
-	--Register.pc;
+	//--Register.pc;
 }
 
 FINLINE void LR35902::DI() { InteruptsEnabled = 0; }

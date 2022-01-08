@@ -4,9 +4,35 @@
 #include "LR35902.h"
 #include <vector>
 #include <bitset>
+#include "Register.h"
 
-enum MBCs : uint8_t { none, mbc1, mbc2, mbc3, mbc4, mbc5 };
-enum Interupts : uint8_t { vBlank, lcdStat, timer, serial, joypad };
+namespace header {
+	const int entry_point = 0x100;
+	const int logo = 0x104;
+	const int title = 0x134;
+	const int manufacturer_code = 0x13F;
+	const int cgb_flag = 0x143;
+	const int new_license_code = 0x144;
+	const int sgb_flag = 0x146;
+	const int cartridge_type = 0x147;
+	const int rom_size = 0x148;
+	const int ram_size = 0x149;
+	const int destination_code = 0x14A;
+	const int old_license_code = 0x14B;
+	const int version_number = 0x14C;
+	const int header_checksum = 0x14D;
+	const int global_checksum = 0x14E;
+} // namespace header
+
+enum MBCs : uint8_t { none, mbc1, mbc2, mbc3, mbc4, mbc5, unknown };
+enum Interupts : uint8_t
+{
+	vBlank = 0x40,
+	lcdStat = 0x48,
+	timer = 0x50,
+	serial = 0x58,
+	joypad = 0x60
+};
 enum Key : uint8_t { right, aButton, left, bButton, up, select, down, start };
 
 struct GameHeader final
@@ -31,7 +57,6 @@ public:
 	void SetRunningVariable(bool isRunning) { IsRunning = isRunning; }
 	GameHeader ReadHeader();
 
-	void InitROM();
 	void TestCPU();
 	void Disassemble();
 
@@ -48,8 +73,14 @@ public:
 	uint8_t ReadMemory(uint16_t pos);
 	uint16_t ReadMemoryWord(uint16_t& pos);
 
+	//uint8_t& GetIF() noexcept { return interrupt_flag.ref(); }
+	//uint8_t GetIE() noexcept { return interrupt_enabled.ref(); }
 	uint8_t& GetIF() const noexcept { return IF; }
 	uint8_t GetIE() const noexcept { return IE; }
+
+	ByteRegister interrupt_flag;
+	ByteRegister interrupt_enabled;
+
 	/**
 	 *\brief LCDControl
 	 *\note \code{.unparsed} Bit 7 - LCD Display Enable             (0=Off, 1=On)
@@ -88,7 +119,7 @@ public:
 
 	void AddCycles(const unsigned cycles) { CurrentCycles += cycles; }
 	unsigned int GetCycles() const noexcept { return CurrentCycles; }
-	void RequestInterrupt(Interupts bit) const noexcept { IF |= 1 << bit; }
+	void RequestInterrupt(Interupts bit) noexcept;
 	void SetKey(const Key key, const bool pressed);
 
 	void SetPaused(const bool isPaused) noexcept { IsPaused = isPaused; }
@@ -120,15 +151,12 @@ private:
 	bool m_TestingOpcodes = false;
 	std::string fileName{};
 
-	std::vector<uint8_t> RamBanks{};
 	LR35902 Cpu{ *this };
 
 	unsigned int CurrentCycles{};
 	unsigned int DivCycles{}, TIMACycles{};
 
-	uint8_t Memory[0x10000]; //The Entire addressable range; "memory" is not quite right.. //TODO: Improve (not all locations will be used)
 	std::bitset<(160 * 144) * 2> FrameBuffer{};
-	std::vector<uint8_t> Rom{};
 
 	uint8_t& DIVTimer{ (Memory[0xFF04]) }; ///< DIVider\note Constant accumulation at 16384Hz, regardless\n Resets when written to
 	uint8_t& TIMATimer{ (Memory[0xFF05]) }; ///< Timer Counter(Accumulator?)\note Incremented by the TAC frequency \n When it overflows, it is set equal to the TMA and an INT 50 is fired
@@ -175,6 +203,7 @@ Bits 1-0 - Input Clock Select
 	uint16_t CyclesFramesToRun{};
 	uint16_t SpeedMultiplier{ 1 };
 
+	uint8_t Memory[0x10000]; //The Entire addressable range; "memory" is not quite right.. //TODO: Improve (not all locations will be used)
 	struct
 	{
 		union
@@ -199,17 +228,18 @@ Bits 1-0 - Input Clock Select
 			return isRam ? ramOrRomBank : 0;
 		}
 	} ActiveRomRamBank{};
+	MBCs Mbc{};
+	std::vector<uint8_t> RamBanks{};
+	std::vector<uint8_t> Rom{};
+	bool RamBankEnabled : 1;
 
 	uint8_t JoyPadState{ 0xFF };///< States of all 8 keys\n 1==NOT pressed
 	bool IsPaused : 1;
 	bool IsRunning : 1;
-	bool RamBankEnabled : 1;
 	uint8_t IsCycleFrameBound : 2; ///< Whether we're cycle, frame or not bound\note Bit 0: Frame\n Bit 1: Cycle\n Can't be both
 	bool OnlyDrawLast : 1;
 	bool AutoSpeed : 1;
 	bool UNUSED : 1;
-
-	MBCs Mbc{};
 
 	void HandleTimers(unsigned stepCycles, unsigned cycleBudget);
 	uint8_t GetJoypadState() const;
@@ -218,4 +248,19 @@ Bits 1-0 - Input Clock Select
 	{
 		return value - min <= max - min;
 	}
+
+	//MEMORY BANK CONTROLLERS
+private:
+	std::function<void(const uint16_t&, const uint8_t)> MBCWrite{};
+
+	void MBCNoneWrite(const uint16_t& address, const uint8_t byte);
+	void MBC1Write(const uint16_t& address, const uint8_t byte);
+	void MBC3Write(const uint16_t& address, const uint8_t byte);
+
+	std::function<uint8_t(const uint16_t&)> MBCRead{};
+
+	uint8_t MBCNoneRead(const uint16_t& address);
+	uint8_t MBC1Read(const uint16_t& address);
+	uint8_t MBC3Read(const uint16_t& address);
+
 };

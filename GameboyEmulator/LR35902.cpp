@@ -12,6 +12,7 @@
 #endif
 #include <iostream>
 #include "opc_test/disassembler.h"
+#include "bitwise.h"
 
 static int cycles_per_instruction[] = {
 	/* 0   1   2   3   4   5   6   7   8   9   a   b   c   d   e   f       */
@@ -111,6 +112,12 @@ void LR35902::Reset(const bool skipBoot)
 
 void LR35902::ExecuteNextOpcode()
 {
+	if (Halted)
+	{
+		Gameboy.AddCycles(1);
+		return;
+	}
+
 	m_opcode = Gameboy.ReadMemory(Register.pc++);
 
 #ifdef VERBOSE
@@ -184,11 +191,13 @@ void LR35902::ExecuteNextOpcodeTest()
 	else
 		ExecuteOpcode();
 
-	if (EnteringHalt)
+	if (Halted)
 		--Register.pc;
 
 	if (InteruptChangePending)
 	{
+		Halted = false;
+
 		if ((*(uint8_t*)&InteruptChangePending & 8) && Gameboy.ReadMemory(Register.pc - 1) != 0xFB)
 		{
 			InteruptsEnabled = true;
@@ -223,10 +232,35 @@ void LR35902::TestCPU()
 
 void LR35902::HandleInterupts()
 {
-	const uint8_t ints{ static_cast<uint8_t>(Gameboy.GetIF() & Gameboy.GetIE()) };
+	//if (InteruptsEnabled)
+	//{
+	//	u8 fired_interrupts = Gameboy.interrupt_flag.value() & Gameboy.interrupt_enabled.value();
+	//	if (!fired_interrupts)
+	//		return;
+	//	Halted = false;
+	//	PUSH(Register.pc);
+	//	bool handled_interrupt = false;
+	//	handled_interrupt = HandleInterrupt(0, Interupts::vBlank, fired_interrupts);
+	//	if (handled_interrupt)
+	//		return;
+	//	handled_interrupt = HandleInterrupt(1, Interupts::lcdStat, fired_interrupts);
+	//	if (handled_interrupt)
+	//		return;
+	//	handled_interrupt = HandleInterrupt(2, Interupts::timer, fired_interrupts);
+	//	if (handled_interrupt)
+	//		return;
+	//	handled_interrupt = HandleInterrupt(3, Interupts::serial, fired_interrupts);
+	//	if (handled_interrupt)
+	//		return;
+	//	handled_interrupt = HandleInterrupt(4, Interupts::joypad, fired_interrupts);
+	//	if (handled_interrupt)
+	//		return;
+	//}
 
+	uint8_t	ints = static_cast<uint8_t>(Gameboy.GetIF() & Gameboy.GetIE());
 	if (InteruptsEnabled && ints)
 	{
+		Halted = false;
 		for (int bit{ 0 }; bit < 5; ++bit)
 		{
 			if ((ints >> bit) & 0x1)
@@ -253,6 +287,16 @@ void LR35902::HandleInterupts()
 	}
 }
 
+bool LR35902::HandleInterrupt(u8 interrupt_bit, u16 interrupt_vector, u8 fired_interrupts)
+{
+	if (!bitwise::check_bit(fired_interrupts, interrupt_bit))
+		return false;
+
+	Gameboy.interrupt_flag.set_bit_to(interrupt_bit, false);
+	Register.pc = interrupt_vector;
+	InteruptsEnabled = false;
+	return true;
+}
 void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, const bool draw) noexcept
 {
 	const unsigned cyclesOneDraw{ 456 };
@@ -349,7 +393,7 @@ uint8_t LR35902::ExecuteOpcode()
 	case 0x09: //Add the contents of register pair BC to the contents of register pair HL, and store the results in register pair HL.
 		OPCYCLE(ADDToHL(Register.reg16.BC), 8);
 	case 0x19: //Add the contents of register pair DE to the contents of register pair HL, and store the results in register pair HL.
-		OPCYCLE(ADDToHL( Register.reg16.DE), 8);
+		OPCYCLE(ADDToHL(Register.reg16.DE), 8);
 	case 0x29: //Add the contents of register pair HL to the contents of register pair HL, and store the results in register pair HL.
 		OPCYCLE(ADDToHL(Register.reg16.HL), 8);
 	case 0x39: //Add the contents of register pair SP to the contents of register pair HL, and store the results in register pair HL.
@@ -820,7 +864,6 @@ uint8_t LR35902::ExecuteOpcode()
 		The contents of bit 7 are placed in both the CY flag and bit 0 of register A.
 		*/
 		OPCYCLE(RLA(false), 4); //Codeslinger: 8
-
 
 		//following opcodes were not in the original implementation of the emulator
 	case 0x0F: OPCYCLE(RRCA(), 4);
@@ -1925,7 +1968,7 @@ void LR35902::mycpu_get_state(state* state)
 	state->reg8.H = Register.reg8.H;
 	state->reg8.L = Register.reg8.L;
 
-	state->halted = EnteringHalt;
+	state->halted = Halted;
 	state->interrupts_master_enabled = InteruptsEnabled;
 
 	state->num_mem_accesses = num_mem_accesses;

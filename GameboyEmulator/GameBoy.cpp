@@ -35,11 +35,51 @@ void GameBoy::LoadGame(const std::string& gbFile)
 	const GameHeader header{ ReadHeader() };
 	Mbc = header.mbc;
 
+	using namespace std::placeholders;
+	switch (Mbc)
+	{
+	case mbc1:
+		MBCWrite = std::bind(&GameBoy::MBC1Write, this, _1, _2);
+		MBCRead = std::bind(&GameBoy::MBC1Read, this, _1);
+		break;
+	case mbc2:
+		break;
+	case mbc3:
+		MBCWrite = std::bind(&GameBoy::MBC3Write, this, _1, _2);
+		MBCRead = std::bind(&GameBoy::MBC3Read, this, _1);
+		break;
+	case mbc4:
+		break;
+	case mbc5:
+		break;
+	case none:
+		MBCWrite = std::bind(&GameBoy::MBCNoneWrite, this, _1, _2);
+		MBCRead = std::bind(&GameBoy::MBCNoneRead, this, _1);
+		break;
+	}
+
 	uint8_t banksNeeded{};
 	switch (header.ramSizeValue)
 	{
 	case 0x00:
-		banksNeeded = 1;
+		switch (Mbc)
+		{
+		case mbc1:
+			banksNeeded = 16;
+			break;
+		case mbc2:
+			break;
+		case mbc3:
+			break;
+		case mbc4:
+			break;
+		case mbc5:
+			break;
+		case none:
+			banksNeeded = 1;
+			break;
+		}
+
 		RamBanks.resize(banksNeeded * 0x8000);
 		break;
 	case 0x01:
@@ -113,6 +153,7 @@ void GameBoy::LoadGame(const std::string& gbFile)
 		}
 		RamBanks.resize(banksNeeded * 0x8000);
 		break;
+
 	default:
 		break;
 	}
@@ -150,6 +191,8 @@ void GameBoy::Update()
 			const unsigned int cycleBudget{ static_cast<unsigned>(ceil(4194304.0f / fps)) * SpeedMultiplier };
 			while (!IsPaused && CurrentCycles < cycleBudget)
 			{
+				Cpu.HandleInterupts();
+
 				unsigned int stepCycles{ CurrentCycles };
 				Cpu.ExecuteNextOpcode();
 				stepCycles = CurrentCycles - stepCycles;
@@ -168,13 +211,11 @@ void GameBoy::Update()
 					!OnlyDrawLast || !(IsCycleFrameBound & 1) || IsCycleFrameBound & 1 && CyclesFramesToRun == 1);
 
 				//If vblank interrupt and we're frame bound, subtract frames and call pause if needed
-				if (IF & 1 && IsCycleFrameBound & 1 && !--CyclesFramesToRun)
+				if (/*interrupt_flag.value()*/GetIF() & 1 && IsCycleFrameBound & 1 && !--CyclesFramesToRun)
 				{
 					IsCycleFrameBound = 0;
 					IsPaused = true;
 				}
-
-				Cpu.HandleInterupts();
 			}
 			lastValidTick = currentTicks;
 			idle = false;
@@ -198,15 +239,24 @@ GameHeader GameBoy::ReadHeader()
 	//Set MBC chip version
 	switch (Rom[0x147])
 	{
+	case 0x00:
+	case 0x08:
+	case 0x09:
+		header.mbc = none;
+		break;
+
 	case 0x01:
 	case 0x02:
 	case 0x03:
+	case 0xFF:
 		header.mbc = mbc1;
 		break;
+
 	case 0x05:
 	case 0x06:
 		header.mbc = mbc2;
 		break;
+
 	case 0x0f:
 	case 0x10:
 	case 0x11:
@@ -214,11 +264,13 @@ GameHeader GameBoy::ReadHeader()
 	case 0x13:
 		header.mbc = mbc3;
 		break;
+
 	case 0x15:
 	case 0x16:
 	case 0x17:
 		header.mbc = mbc4;
 		break;
+
 	case 0x19:
 	case 0x1a:
 	case 0x1b:
@@ -227,18 +279,25 @@ GameHeader GameBoy::ReadHeader()
 	case 0x1e:
 		header.mbc = mbc5;
 		break;
+
+	case 0x0B:
+	case 0x0C:
+	case 0x0D:
+	case 0x20:
+	case 0x22:
+	case 0xFC:
+	case 0xFD:
+	case 0xFE:
+		header.mbc = unknown;
+		break;
+
 	default:
 		assert(Rom[0x147] == 0x0); //if not 0x0 it's undocumented
 	}
 
-	header.ramSizeValue = Rom[0x149];
+	header.ramSizeValue = Rom[header::ram_size];
 
 	return header;
-}
-
-void GameBoy::InitROM()
-{
-	Rom.resize(0xFFFF, 0);
 }
 
 void GameBoy::TestCPU()
@@ -268,6 +327,13 @@ uint8_t GameBoy::ReadMemory(const uint16_t pos)
 {
 	if (m_TestingOpcodes)
 		return (uint8_t)Cpu.mmu_read(pos);
+
+	if (InRange(pos, 0x0, 0x7fff))
+		return MBCRead(pos);
+
+	//External (cartridge) ram
+	if (InRange(pos, 0xa000, 0xbfff))
+		return MBCRead(pos);
 
 	if (pos <= 0x3FFF) //ROM Bank 0
 		return Rom[pos];
@@ -301,6 +367,16 @@ void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 	{
 		Cpu.mmu_write(address, data);
 		return;
+	}
+
+	if (Mbc != none)
+	{
+		if (InRange(address, 0x0, 0x7fff))
+			MBCWrite(address, data); return;
+
+		//External (cartridge) ram
+		if (InRange(address, 0xa000, 0xbfff))
+			MBCWrite(address, data); return;
 	}
 
 	if (address <= 0x1FFF) //Enable/Disable RAM
@@ -374,6 +450,14 @@ void GameBoy::WriteMemoryWord(const uint16_t pos, const uint16_t value)
 	WriteMemory(pos + 1, value >> 8);
 }
 
+void GameBoy::RequestInterrupt(Interupts bit) noexcept
+{
+	//interrupt_flag.set_bit_to(bit, true);
+	////interrupt_flag.set(interrupt_flag.value() | (1 << bit));
+	////interrupt_flag |= 1 << bit;
+	GetIF() |= 1 << bit;
+}
+
 void GameBoy::SetKey(const Key key, const bool pressed)
 {
 	if (pressed)
@@ -438,7 +522,8 @@ void GameBoy::HandleTimers(const unsigned stepCycles, const unsigned cycleBudget
 			if (!++TIMATimer)
 			{
 				TIMATimer = TMATimer;
-				IF |= 0x4;
+				//interrupt_flag |= Interupts::timer;
+				GetIF() |= 0x4;
 			}
 			TIMACycles -= threshold; //threshold == 0??
 		}
@@ -465,4 +550,85 @@ uint8_t GameBoy::GetJoypadState() const
 		res |= !!(JoyPadState & 1 << down) << 3;
 	}
 	return res;
+}
+
+void GameBoy::MBCNoneWrite(const uint16_t& address, const uint8_t byte)
+{
+	//Memory[address] = byte;
+}
+
+void GameBoy::MBC1Write(const uint16_t& address, const uint8_t byte)
+{
+	if (InRange(address, 0x0000, 0x1FFF))
+		RamBankEnabled = true;
+
+	if (InRange(address, 0x2000, 0x3FFF))
+	{
+		if (byte == 0x0) { ActiveRomRamBank.romBank = 0x1; }
+
+		if (byte == 0x20) { ActiveRomRamBank.romBank = 0x21; return; }
+		if (byte == 0x40) { ActiveRomRamBank.romBank = 0x41; return; }
+		if (byte == 0x60) { ActiveRomRamBank.romBank = 0x61; return; }
+
+		uint16_t rom_bank_bits = byte & 0x1F;
+		ActiveRomRamBank.romBank = rom_bank_bits;
+	}
+
+	if (InRange(address, 0x4000, 0x5FFF))
+		ActiveRomRamBank.ramOrRomBank = byte;
+
+		//std::cout << "Unimplemented: Setting upper bits of ROM bank number" << std::endl;
+
+	if (InRange(address, 0x6000, 0x7FFF))
+		ActiveRomRamBank.isRam = byte;
+
+		//std::cout << "Unimplemented: Selecting ROM/RAM Mode" << std::endl;
+
+	if (InRange(address, 0xA000, 0xBFFF))
+	{
+		if (!RamBankEnabled) { return; }
+
+		auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
+		auto address_in_ram = (address - 0xA000) + offset_into_ram;
+		RamBanks[address_in_ram] = byte;
+	}
+}
+
+void GameBoy::MBC3Write(const uint16_t& address, const uint8_t byte)
+{
+}
+
+uint8_t GameBoy::MBCNoneRead(const uint16_t& address)
+{
+	return Rom[address];
+}
+
+uint8_t GameBoy::MBC1Read(const uint16_t& address)
+{
+	if (InRange(address, 0x0000, 0x3FFF))
+		return Rom[address];
+
+	if (InRange(address, 0x4000, 0x7FFF))
+	{
+		uint16_t address_into_bank = address - 0x4000;
+		unsigned int bank_offset = 0x4000 * ActiveRomRamBank.GetRamBank();
+
+		unsigned int address_in_rom = bank_offset + address_into_bank;
+		return Rom[address_in_rom];
+	}
+
+	if (InRange(address, 0xA000, 0xBFFF))
+	{
+		auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
+		auto address_in_ram = (address - 0xA000) + offset_into_ram;
+		return RamBanks[address_in_ram];
+	}
+
+	//fatal_error("Attempted to read from unmapped MBC1 address 0x%x", address.value());
+	return uint8_t{};
+}
+
+uint8_t GameBoy::MBC3Read(const uint16_t& address)
+{
+	return 0;
 }

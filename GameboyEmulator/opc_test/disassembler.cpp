@@ -348,7 +348,7 @@ std::string disassembleToString(uint8_t data)
 	mnem = op->mnem;
 	std::string mnems{ };
 
-	u8 temp1, temp2;
+	u8 temp1/*, temp2*/;
 	s8 stemp;
 
 	while (*mnem)

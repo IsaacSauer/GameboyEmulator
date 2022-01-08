@@ -130,8 +130,10 @@ public:
 	 * \note A Rudementary interupt handler
 	 */
 	void HandleInterupts();
+	bool HandleInterrupt(u8 interrupt_bit, u16 interrupt_vector, u8 fired_interrupts);
 	void HandleGraphics(const unsigned cycles, const unsigned cycleBudget, const bool draw) noexcept;
 
+	bool GetHalted() { return Halted; }
 private:
 	struct DrawData
 	{
@@ -668,7 +670,7 @@ private:
 #endif
 
 	uint8_t m_opcode;
-	bool EnteringHalt = false;
+	bool Halted = false;
 
 	Registers Register{};
 	std::thread DrawThreads[10];

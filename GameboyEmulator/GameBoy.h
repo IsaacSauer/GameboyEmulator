@@ -232,6 +232,7 @@ Bits 1-0 - Input Clock Select
 	std::vector<uint8_t> RamBanks{};
 	std::vector<uint8_t> Rom{};
 	bool RamBankEnabled : 1;
+	bool m_Ram_Over_Rtc = true;
 
 	uint8_t JoyPadState{ 0xFF };///< States of all 8 keys\n 1==NOT pressed
 	bool IsPaused : 1;

@@ -35,6 +35,8 @@ void GameBoy::LoadGame(const std::string& gbFile)
 	const GameHeader header{ ReadHeader() };
 	Mbc = header.mbc;
 
+	std::cout << "title of game: " << header.title << std::endl;
+
 	using namespace std::placeholders;
 	switch (Mbc)
 	{
@@ -58,103 +60,31 @@ void GameBoy::LoadGame(const std::string& gbFile)
 		break;
 	}
 
-	uint8_t banksNeeded{};
+	std::cout << "ram size: " << std::to_string(header.ramSizeValue) << std::endl;
+
+
 	switch (header.ramSizeValue)
 	{
 	case 0x00:
-		switch (Mbc)
-		{
-		case mbc1:
-			banksNeeded = 16;
-			break;
-		case mbc2:
-			break;
-		case mbc3:
-			break;
-		case mbc4:
-			break;
-		case mbc5:
-			break;
-		case none:
-			banksNeeded = 1;
-			break;
-		}
-
-		RamBanks.resize(banksNeeded * 0x8000);
+		RamBanks.resize(0x0);
 		break;
 	case 0x01:
-		switch (Mbc)
-		{
-		case mbc1:
-		case mbc2:
-		case mbc3:
-		case mbc4:
-		case mbc5:
-		case none:
-			banksNeeded = 1;
-			break;
-		}
-		RamBanks.resize(banksNeeded * 0x2000);
+		RamBanks.resize(0x800);
 		break;
 	case 0x02:
-		switch (Mbc)
-		{
-		case mbc1:
-		case mbc2:
-		case mbc3:
-		case mbc4:
-		case mbc5:
-		case none:
-			banksNeeded = 1;
-			break;
-		}
-		RamBanks.resize(banksNeeded * 0x8000);
+		RamBanks.resize(0x2000);
 		break;
 	case 0x03:
-		switch (Mbc)
-		{
-		case mbc1:
-		case mbc2:
-		case mbc3:
-		case mbc4:
-		case mbc5:
-		case none:
-			banksNeeded = 4;
-			break;
-		}
-		RamBanks.resize(banksNeeded * 0x8000);
+		RamBanks.resize(0x8000);
 		break;
 	case 0x04:
-		switch (Mbc)
-		{
-		case mbc1:
-		case mbc2:
-		case mbc4:
-		case mbc5:
-		case none:
-			banksNeeded = 16;
-			break;
-		default:
-			break;
-		}
-		RamBanks.resize(banksNeeded * 0x8000);
+		RamBanks.resize(0x20000);
 		break;
 	case 0x05:
-		switch (Mbc)
-		{
-		case mbc1:
-		case mbc2:
-		case mbc3:
-		case mbc4:
-		case mbc5:
-		case none:
-			banksNeeded = 8;
-			break;
-		}
-		RamBanks.resize(banksNeeded * 0x8000);
+		RamBanks.resize(0x10000);
 		break;
-
 	default:
+		RamBanks.resize(0);
 		break;
 	}
 
@@ -577,12 +507,8 @@ void GameBoy::MBC1Write(const uint16_t& address, const uint8_t byte)
 	if (InRange(address, 0x4000, 0x5FFF))
 		ActiveRomRamBank.ramOrRomBank = byte;
 
-		//std::cout << "Unimplemented: Setting upper bits of ROM bank number" << std::endl;
-
 	if (InRange(address, 0x6000, 0x7FFF))
 		ActiveRomRamBank.isRam = byte;
-
-		//std::cout << "Unimplemented: Selecting ROM/RAM Mode" << std::endl;
 
 	if (InRange(address, 0xA000, 0xBFFF))
 	{
@@ -596,6 +522,48 @@ void GameBoy::MBC1Write(const uint16_t& address, const uint8_t byte)
 
 void GameBoy::MBC3Write(const uint16_t& address, const uint8_t byte)
 {
+	if (InRange(address, 0x0000, 0x1FFF))
+	{
+		if (byte == 0x0A)
+			RamBankEnabled = true;
+
+		if (byte == 0x0)
+			RamBankEnabled = false;
+	}
+
+	if (InRange(address, 0x2000, 0x3FFF))
+	{
+		if (byte == 0x0) 
+			ActiveRomRamBank.romBank = 0x1;
+
+		uint16_t rom_bank_bits = byte & 0x7F;
+		ActiveRomRamBank.romBank=rom_bank_bits;
+	}
+
+	if (InRange(address, 0x4000, 0x5FFF))
+	{
+		if (byte <= 0x03)
+		{
+			
+			m_Ram_Over_Rtc = true;
+			RamBanks[address] = byte;
+		}
+
+		if (byte >= 0x08 && byte <= 0xC)
+			m_Ram_Over_Rtc = false;
+	}
+
+	if (InRange(address, 0xA000, 0xBFFF))
+	{
+		if (!RamBankEnabled) { return; }
+
+		if (m_Ram_Over_Rtc)
+		{
+			auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
+			auto address_in_ram = (address - 0xA000) + offset_into_ram;
+			RamBanks[address_in_ram] = byte;
+		}
+	}
 }
 
 uint8_t GameBoy::MBCNoneRead(const uint16_t& address)
@@ -624,11 +592,29 @@ uint8_t GameBoy::MBC1Read(const uint16_t& address)
 		return RamBanks[address_in_ram];
 	}
 
-	//fatal_error("Attempted to read from unmapped MBC1 address 0x%x", address.value());
 	return uint8_t{};
 }
 
 uint8_t GameBoy::MBC3Read(const uint16_t& address)
 {
-	return 0;
+	if (InRange(address, 0x0000, 0x3FFF))
+		return Rom[address];
+
+	if (InRange(address, 0x4000, 0x7FFF))
+	{
+		uint16_t address_into_bank = address - 0x4000;
+		unsigned int bank_offset = 0x4000 * ActiveRomRamBank.GetRamBank();
+
+		unsigned int address_in_rom = bank_offset + address_into_bank;
+		return Rom[address_in_rom];
+	}
+
+	if (InRange(address, 0xA000, 0xBFFF))
+	{
+		auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
+		auto address_in_ram = (address - 0xA000) + offset_into_ram;
+		return RamBanks[address_in_ram];
+	}
+
+	return uint8_t{};
 }

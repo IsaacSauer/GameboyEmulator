@@ -70,8 +70,8 @@ public:
 	void WriteMemory(uint16_t address, uint8_t data);
 	void WriteMemoryWord(const uint16_t pos, const uint16_t value);
 
-	uint8_t ReadMemory(uint16_t pos);
-	uint16_t ReadMemoryWord(uint16_t& pos);
+	uint8_t ReadMemory(uint16_t pos) const ;
+	uint16_t ReadMemoryWord(uint16_t& pos) const;
 
 	//uint8_t& GetIF() noexcept { return interrupt_flag.ref(); }
 	//uint8_t GetIE() noexcept { return interrupt_enabled.ref(); }
@@ -113,8 +113,8 @@ public:
  Bit 3-2 - Shade for Color Number 1
  Bit 1-0 - Shade for Color Number 0\endcode
 	 */
-	std::bitset<(160 * 144) * 2>& GetFramebuffer() noexcept { return FrameBuffer; }
-	const std::bitset<(160 * 144) * 2>& GetFramebuffer() const noexcept { return FrameBuffer; }
+	std::bitset<160 * 144 * 2>& GetFramebuffer() noexcept { return FrameBuffer; }
+	const std::bitset<160 * 144 * 2>& GetFramebuffer() const noexcept { return FrameBuffer; }
 	uint8_t GetPixelColor(const uint16_t pixel) const { return FrameBuffer[pixel * 2] << 1 | static_cast<uint8_t>(FrameBuffer[pixel * 2 + 1]); }
 
 	void AddCycles(const unsigned cycles) { CurrentCycles += cycles; }
@@ -156,7 +156,7 @@ private:
 	unsigned int CurrentCycles{};
 	unsigned int DivCycles{}, TIMACycles{};
 
-	std::bitset<(160 * 144) * 2> FrameBuffer{};
+	std::bitset<160 * 144 * 2> FrameBuffer{};
 
 	uint8_t& DIVTimer{ (Memory[0xFF04]) }; ///< DIVider\note Constant accumulation at 16384Hz, regardless\n Resets when written to
 	uint8_t& TIMATimer{ (Memory[0xFF05]) }; ///< Timer Counter(Accumulator?)\note Incremented by the TAC frequency \n When it overflows, it is set equal to the TMA and an INT 50 is fired

@@ -12,7 +12,7 @@ GameBoy::GameBoy(const std::string& gameFile)
 }
 
 //values of banks needed / size etc retrieved from https://gbdev.gg8.se/wiki/articles/The_Cartridge_Header#0149_-_RAM_Size
-void GameBoy::LoadGame(const std::string& gbFile)
+void GameBoy::LoadGame(const std::string& gbFile) 
 {
 	fileName = gbFile;
 
@@ -60,33 +60,35 @@ void GameBoy::LoadGame(const std::string& gbFile)
 		break;
 	}
 
-	std::cout << "ram size: " << std::to_string(header.ramSizeValue) << std::endl;
-
+	unsigned int actualRamSize{};
 
 	switch (header.ramSizeValue)
 	{
 	case 0x00:
-		RamBanks.resize(0x0);
+		actualRamSize = 0x2000;
 		break;
 	case 0x01:
-		RamBanks.resize(0x800);
+		actualRamSize = 0x800;
 		break;
 	case 0x02:
-		RamBanks.resize(0x2000);
+		actualRamSize = 0x2000;
 		break;
 	case 0x03:
-		RamBanks.resize(0x8000);
+		actualRamSize = 0x8000;
 		break;
 	case 0x04:
-		RamBanks.resize(0x20000);
+		actualRamSize = 0x20000;
 		break;
 	case 0x05:
-		RamBanks.resize(0x10000);
+		actualRamSize = 0x10000;
 		break;
 	default:
-		RamBanks.resize(0);
+		actualRamSize = 0;
 		break;
 	}
+
+	RamBanks.resize(actualRamSize);
+	std::cout << "ram size: " << std::to_string(header.ramSizeValue) << std::endl;
 
 	std::cout << "memory bank: " << std::to_string(Mbc) << std::endl;
 	Cpu.Reset();
@@ -224,7 +226,7 @@ GameHeader GameBoy::ReadHeader()
 	default:
 		assert(Rom[0x147] == 0x0); //if not 0x0 it's undocumented
 	}
-
+	
 	header.ramSizeValue = Rom[header::ram_size];
 
 	return header;
@@ -253,38 +255,38 @@ void GameBoy::Disassemble()
 	ofile.close();
 }
 
-uint8_t GameBoy::ReadMemory(const uint16_t pos)
+uint8_t GameBoy::ReadMemory(const uint16_t pos) const
 {
-	if (m_TestingOpcodes)
-		return (uint8_t)Cpu.mmu_read(pos);
+	//if (m_TestingOpcodes)
+	//	return (uint8_t)Cpu.mmu_read(pos);
 
 	if (InRange(pos, 0x0, 0x7fff))
 		return MBCRead(pos);
 
 	//External (cartridge) ram
-	if (InRange(pos, 0xa000, 0xbfff))
-		return MBCRead(pos);
+	//if (InRange(pos, 0xa000, 0xbfff))
+	//	return MBCRead(pos);
 
 	if (pos <= 0x3FFF) //ROM Bank 0
 		return Rom[pos];
 	if (pos == 0xFF00)
 		return GetJoypadState();
-	if (pos - 0x4000 <= 0x7FFF - 0x4000) //ROM Bank x
-		return Rom[pos + ((ActiveRomRamBank.GetRomBank() - 1) * 0x4000)];
+	if ( InRange(pos, 0x4000, 0x7FFF)) //ROM Bank x
+		return Rom[pos + (ActiveRomRamBank.GetRomBank() - 1) * 0x4000];
 	if (InRange(pos, 0xA000, 0xBFFF)) //RAM Bank x
-		return RamBanks[(ActiveRomRamBank.GetRamBank() * 0x2000) + (pos - 0xA000)];
+		return RamBanks[ActiveRomRamBank.GetRamBank() * 0x2000 + (pos - 0xA000)];
 
 	return Memory[pos];
 }
 
-uint16_t GameBoy::ReadMemoryWord(uint16_t& pos)
+uint16_t GameBoy::ReadMemoryWord(uint16_t& pos) const
 {
-	if (m_TestingOpcodes)
-	{
-		const uint16_t res{ static_cast<uint16_t>(static_cast<uint16_t>(Cpu.mmu_read(pos)) | static_cast<uint16_t>(Cpu.mmu_read(pos + 1)) << 8) };
-		pos += 2;
-		return res;
-	}
+	//if (m_TestingOpcodes)
+	//{
+	//	const uint16_t res{ static_cast<uint16_t>(static_cast<uint16_t>(Cpu.mmu_read(pos)) | static_cast<uint16_t>(Cpu.mmu_read(pos + 1)) << 8) };
+	//	pos += 2;
+	//	return res;
+	//}
 
 	const uint16_t res{ static_cast<uint16_t>(static_cast<uint16_t>(ReadMemory(pos)) | static_cast<uint16_t>(ReadMemory(pos + 1)) << 8) };
 	pos += 2;
@@ -299,72 +301,86 @@ void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 		return;
 	}
 
-	if (Mbc != none)
-	{
-		if (InRange(address, 0x0, 0x7fff))
-			MBCWrite(address, data); return;
-
-		//External (cartridge) ram
-		if (InRange(address, 0xa000, 0xbfff))
-			MBCWrite(address, data); return;
-	}
-
-	if (address <= 0x1FFF) //Enable/Disable RAM
-	{
-		if (Mbc <= mbc1 || Mbc == mbc2 && !(address & 0x100))
-			RamBankEnabled = (data & 0xF) == 0xA;
-	}
-	else if (InRange(address, static_cast<uint16_t>(0x2000), static_cast<uint16_t>(0x3FFF))) //5 bits;Lower 5 bits of ROM Bank
-	{
-		if (Mbc <= mbc1 || Mbc == mbc2 && address & 0x100)
-			ActiveRomRamBank.romBank = (data ? data : 1) & 0x1F;
-	}
-	else if (InRange(address, static_cast<uint16_t>(0x4000), static_cast<uint16_t>(0x5FFF))) //2 bits;Ram or upper 2 bits of ROM bank
-	{
-		ActiveRomRamBank.ramOrRomBank = data;
-	}
-	else if (InRange(address, static_cast<uint16_t>(0x6000), static_cast<uint16_t>(0x7FFF))) //1 bit; Rom or Ram mode of ^
-	{
-		ActiveRomRamBank.isRam = data;
-	}
-	else if (InRange(address, static_cast<uint16_t>(0xA000), static_cast<uint16_t>(0xBFFF))) //External RAM
-	{
-		if (RamBankEnabled)
-			RamBanks[ActiveRomRamBank.GetRamBank() * 0x2000 + (address - 0xA000)] = data;
-	}
-	else if (InRange(address, static_cast<uint16_t>(0xC000), static_cast<uint16_t>(0xDFFF))) //Internal RAM
+	if (address < static_cast<uint16_t>(0x8000))
+	{}
+	else if (InRange(address, static_cast<uint16_t>(0xE000), static_cast<uint16_t>(0xFE00)))
 	{
 		Memory[address] = data;
+		WriteMemory(address - 0x2000, data);
 	}
-	else if (InRange(address, static_cast<uint16_t>(0xE000), static_cast<uint16_t>(0xFDFF))) //ECHO RAM
-	{
-		Memory[address] = data;
-		Memory[address - 0x2000] = data;
-	}
-	else if (InRange(address, static_cast<uint16_t>(0xFEA0), static_cast<uint16_t>(0xFEFF))) //Mysterious Restricted Range
-	{
-	}
-	else if (address == 0xFF04) //Reset DIV
-	{
-		DIVTimer = 0;
-		DivCycles = 0;
-	}
-	else if (address == 0xFF07) //Set timer Clock speed
-	{
-		TACTimer = data & 0x7;
-	}
-	else if (address == 0xFF44)  //Horizontal scanline reset
-	{
-		Memory[address] = 0;
-	}
-	else if (address == 0xFF46)  //DMA transfer
-	{
-		const uint16_t src{ static_cast<uint16_t>(static_cast<uint16_t>(data) << 8) };
-		for (int i{ 0 }; i < 0xA0; ++i)
-			WriteMemory(static_cast<uint16_t>(0xFE00 + i), ReadMemory(static_cast<uint16_t>(src + i)));
-	}
+	else if (InRange(address, static_cast<uint16_t>(0xFEA0), static_cast<uint16_t>(0xFEFF)))
+	{}
 	else
 		Memory[address] = data;
+
+
+
+	//if (Mbc != none)
+	//{
+	//	if (InRange(address, 0x0, 0x7fff))
+	//		MBCWrite(address, data);
+
+	//	//External (cartridge) ram
+	//	else if (InRange(address, 0xa000, 0xbfff))
+	//		MBCWrite(address, data); return;
+	//}
+
+	//if (address <= 0x1FFF) //Enable/Disable RAM
+	//{
+	//	if (Mbc <= mbc1 || Mbc == mbc2 && !(address & 0x100))
+	//		RamBankEnabled = (data & 0xF) == 0xA;
+	//}
+	//else if (InRange(address, static_cast<uint16_t>(0x2000), static_cast<uint16_t>(0x3FFF))) //5 bits;Lower 5 bits of ROM Bank
+	//{
+	//	if (Mbc <= mbc1 || Mbc == mbc2 && address & 0x100)
+	//		ActiveRomRamBank.romBank = (data ? data : 1) & 0x1F;
+	//}
+	//else if (InRange(address, static_cast<uint16_t>(0x4000), static_cast<uint16_t>(0x5FFF))) //2 bits;Ram or upper 2 bits of ROM bank
+	//{
+	//	ActiveRomRamBank.ramOrRomBank = data;
+	//}
+	//else if (InRange(address, static_cast<uint16_t>(0x6000), static_cast<uint16_t>(0x7FFF))) //1 bit; Rom or Ram mode of ^
+	//{
+	//	ActiveRomRamBank.isRam = data;
+	//}
+	//else if (InRange(address, static_cast<uint16_t>(0xA000), static_cast<uint16_t>(0xBFFF))) //External RAM
+	//{
+	//	if (RamBankEnabled)
+	//		RamBanks[ActiveRomRamBank.GetRamBank() * 0x2000 + (address - 0xA000)] = data;
+	//}
+	//else if (InRange(address, static_cast<uint16_t>(0xC000), static_cast<uint16_t>(0xDFFF))) //Internal RAM
+	//{
+	//	Memory[address] = data;
+	//}
+	//else if (InRange(address, static_cast<uint16_t>(0xE000), static_cast<uint16_t>(0xFDFF))) //ECHO RAM
+	//{
+	//	Memory[address] = data;
+	//	Memory[address - 0x2000] = data;
+	//}
+	//else if (InRange(address, static_cast<uint16_t>(0xFEA0), static_cast<uint16_t>(0xFEFF))) //Mysterious Restricted Range
+	//{
+	//}
+	//else if (address == 0xFF04) //Reset DIV
+	//{
+	//	DIVTimer = 0;
+	//	DivCycles = 0;
+	//}
+	//else if (address == 0xFF07) //Set timer Clock speed
+	//{
+	//	TACTimer = data & 0x7;
+	//}
+	//else if (address == 0xFF44)  //Horizontal scanline reset
+	//{
+	//	Memory[address] = 0;
+	//}
+	//else if (address == 0xFF46)  //DMA transfer
+	//{
+	//	const uint16_t src{ static_cast<uint16_t>(static_cast<uint16_t>(data) << 8) };
+	//	for (int i{ 0 }; i < 0xA0; ++i)
+	//		WriteMemory(static_cast<uint16_t>(0xFE00 + i), ReadMemory(static_cast<uint16_t>(src + i)));
+	//}
+	//else
+	//	Memory[address] = data;
 }
 
 void GameBoy::WriteMemoryWord(const uint16_t pos, const uint16_t value)
@@ -405,7 +421,7 @@ void GameBoy::SetKey(const Key key, const bool pressed)
 		}
 	}
 	else
-		JoyPadState |= (1 << key);
+		JoyPadState |= 1 << key;
 }
 
 void GameBoy::HandleTimers(const unsigned stepCycles, const unsigned cycleBudget)
@@ -484,7 +500,17 @@ uint8_t GameBoy::GetJoypadState() const
 
 void GameBoy::MBCNoneWrite(const uint16_t& address, const uint8_t byte)
 {
-	//Memory[address] = byte;
+	//if (address < 0x8000)
+	//{}
+	//else if (InRange(address, 0xE000, 0xFE00))
+	//{
+	//	Rom[address] = byte;
+	//	MBCNoneWrite(address - 0x2000, byte);
+	//}
+	//else if (InRange(address, 0xFEA0, 0xFEFF))
+	//{}
+	//else
+	//	Rom[address] = byte;
 }
 
 void GameBoy::MBC1Write(const uint16_t& address, const uint8_t byte)
@@ -515,7 +541,7 @@ void GameBoy::MBC1Write(const uint16_t& address, const uint8_t byte)
 		if (!RamBankEnabled) { return; }
 
 		auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
-		auto address_in_ram = (address - 0xA000) + offset_into_ram;
+		auto address_in_ram = address - 0xA000 + offset_into_ram;
 		RamBanks[address_in_ram] = byte;
 	}
 }
@@ -560,7 +586,7 @@ void GameBoy::MBC3Write(const uint16_t& address, const uint8_t byte)
 		if (m_Ram_Over_Rtc)
 		{
 			auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
-			auto address_in_ram = (address - 0xA000) + offset_into_ram;
+			auto address_in_ram = address - 0xA000 + offset_into_ram;
 			RamBanks[address_in_ram] = byte;
 		}
 	}
@@ -588,7 +614,7 @@ uint8_t GameBoy::MBC1Read(const uint16_t& address)
 	if (InRange(address, 0xA000, 0xBFFF))
 	{
 		auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
-		auto address_in_ram = (address - 0xA000) + offset_into_ram;
+		auto address_in_ram = address - 0xA000 + offset_into_ram;
 		return RamBanks[address_in_ram];
 	}
 
@@ -612,7 +638,7 @@ uint8_t GameBoy::MBC3Read(const uint16_t& address)
 	if (InRange(address, 0xA000, 0xBFFF))
 	{
 		auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
-		auto address_in_ram = (address - 0xA000) + offset_into_ram;
+		auto address_in_ram = address - 0xA000 + offset_into_ram;
 		return RamBanks[address_in_ram];
 	}
 

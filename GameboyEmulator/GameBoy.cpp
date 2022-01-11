@@ -123,8 +123,6 @@ void GameBoy::Update()
 			const unsigned int cycleBudget{ static_cast<unsigned>(ceil(4194304.0f / fps)) * SpeedMultiplier };
 			while (!IsPaused && CurrentCycles < cycleBudget)
 			{
-				Cpu.HandleInterupts();
-
 				unsigned int stepCycles{ CurrentCycles };
 				Cpu.ExecuteNextOpcode();
 				stepCycles = CurrentCycles - stepCycles;
@@ -148,6 +146,8 @@ void GameBoy::Update()
 					IsCycleFrameBound = 0;
 					IsPaused = true;
 				}
+
+				Cpu.HandleInterupts();
 			}
 			lastValidTick = currentTicks;
 			idle = false;

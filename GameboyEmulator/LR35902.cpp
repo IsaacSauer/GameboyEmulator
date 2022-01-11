@@ -107,6 +107,8 @@ void LR35902::Reset(const bool skipBoot)
 		memory[0xFF4A] = 0x00;
 		memory[0xFF4B] = 0x00;
 		memory[0xFFFF] = 0x00;
+
+		Gameboy.GetLY() = 0;
 	}
 }
 
@@ -299,30 +301,95 @@ bool LR35902::HandleInterrupt(u8 interrupt_bit, u16 interrupt_vector, u8 fired_i
 }
 void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, const bool draw) noexcept
 {
+	//LCDCycles += cycles;
+
+	//switch (current_mode)
+	//{
+	//case VideoMode::ACCESS_OAM:
+	//	if (LCDCycles >= CLOCKS_PER_SCANLINE_OAM)
+	//	{
+	//		LCDCycles %= CLOCKS_PER_SCANLINE_OAM;
+	//		Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
+	//		Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, true);
+	//		current_mode = VideoMode::ACCESS_VRAM;
+	//	}
+	//	break;
+	//case VideoMode::ACCESS_VRAM:
+	//	if (LCDCycles >= CLOCKS_PER_SCANLINE_VRAM)
+	//	{
+	//		LCDCycles %= CLOCKS_PER_SCANLINE_VRAM;
+	//		current_mode = VideoMode::HBLANK;
+	//		DrawLine();
+	//		bool hblank_interrupt = bitwise::check_bit(Gameboy.GetLCDS(), 3);
+	//		if (hblank_interrupt)
+	//			Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), 1, true);
+	//		bool ly_coincidence_interrupt = bitwise::check_bit(Gameboy.GetLCDS(), 6);
+	//		bool ly_coincidence = /*ly_compare.value() ==*/ Gameboy.GetLY();
+	//		if (ly_coincidence_interrupt && ly_coincidence)
+	//			Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), 1, true);
+	//		Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 2, ly_coincidence);
+	//		Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
+	//		Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, true);
+	//	}
+	//	break;
+	//case VideoMode::HBLANK:
+	//	if (LCDCycles >= CLOCKS_PER_HBLANK)
+	//	{
+	//		//DrawBackground();
+	//		//DrawWindow(); //window == ui
+	//		++Gameboy.GetLY();
+	//		LCDCycles %= CLOCKS_PER_HBLANK;
+	//		if (Gameboy.GetLY() == 144)
+	//		{
+	//			current_mode = VideoMode::VBLANK;
+	//			Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, false);
+	//			Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, true);
+	//			Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), 0, true);
+	//		}
+	//		else
+	//		{
+	//			Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
+	//			Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, false);
+	//			current_mode = VideoMode::ACCESS_OAM;
+	//		}
+	//	}
+	//	break;
+	//case VideoMode::VBLANK:
+	//	if (LCDCycles >= CLOCKS_PER_SCANLINE)
+	//	{
+	//		++Gameboy.GetLY();
+	//		LCDCycles %= CLOCKS_PER_SCANLINE;
+	//		if (Gameboy.GetLY() == 154)
+	//		{
+	//			DrawSprites();
+	//			ResetFrameBuffer();
+	//			Gameboy.GetLY() = 0;
+	//			current_mode = VideoMode::ACCESS_OAM;
+	//			Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
+	//			Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, false);
+	//		}
+	//	}
+	//	break;
+	//default:
+	//	break;
+	//}
+
 	const unsigned cyclesOneDraw{ 456 };
 	ConfigureLCDStatus(); //This is why we can't "speed this up" in the traditional sense, games are sensitive to this
-
 	if (Gameboy.GetLY() > 153)
 		Gameboy.GetLY() = 0;
-
 	if ((Gameboy.GetLCDC() & 0x80))
 	{
-		if ((LCDCycles += cycles) >= cyclesOneDraw) { //LCD enabled and we're at our cycle mark
+		if ((LCDCycles += cycles) >= cyclesOneDraw) 
+		{ //LCD enabled and we're at our cycle mark
 			LCDCycles = 0;
 			uint8_t dirtyLY;
-
 			if ((dirtyLY = ++Gameboy.GetLY()) == 144)
-			{
 				Gameboy.RequestInterrupt(vBlank);
-			}
 			if (Gameboy.GetLY() > 153)
-			{
 				Gameboy.GetLY() = 0;
-			}
 			if (dirtyLY < 144 && draw)
-			{
 				DrawLine();
-			}
 		}
 	}
 }
@@ -2004,6 +2071,11 @@ uint16_t LR35902::mmu_read(uint16_t addr)
 		ret = 0xaa;
 
 	return ret;
+}
+
+void LR35902::ResetFrameBuffer()
+{
+	Gameboy.GetFramebuffer().reset();
 }
 
 void LR35902::mmu_write(uint16_t addr, uint8_t val)

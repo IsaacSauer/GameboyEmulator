@@ -6,24 +6,6 @@
 #include <bitset>
 #include "Register.h"
 
-namespace header {
-	const int entry_point = 0x100;
-	const int logo = 0x104;
-	const int title = 0x134;
-	const int manufacturer_code = 0x13F;
-	const int cgb_flag = 0x143;
-	const int new_license_code = 0x144;
-	const int sgb_flag = 0x146;
-	const int cartridge_type = 0x147;
-	const int rom_size = 0x148;
-	const int ram_size = 0x149;
-	const int destination_code = 0x14A;
-	const int old_license_code = 0x14B;
-	const int version_number = 0x14C;
-	const int header_checksum = 0x14D;
-	const int global_checksum = 0x14E;
-} // namespace header
-
 enum MBCs : uint8_t { none, mbc1, mbc2, mbc3, mbc4, mbc5, unknown };
 enum Interupts : uint8_t
 {
@@ -54,6 +36,8 @@ public:
 
 	void Update();
 	void LoadGame(const std::string& gbFile);
+	void Reset() { m_Reset = true; }
+
 	void SetRunningVariable(bool isRunning) { IsRunning = isRunning; }
 	GameHeader ReadHeader();
 
@@ -148,6 +132,8 @@ public:
 	void SetOnlyDrawLastFrame(const bool state) noexcept { OnlyDrawLast = state; }
 
 private:
+	std::atomic<bool> m_Reset = false;
+
 	bool m_TestingOpcodes = false;
 	std::string fileName{};
 
@@ -253,15 +239,14 @@ Bits 1-0 - Input Clock Select
 	//MEMORY BANK CONTROLLERS
 private:
 	std::function<void(const uint16_t&, const uint8_t)> MBCWrite{};
-
-	void MBCNoneWrite(const uint16_t& address, const uint8_t byte);
-	void MBC1Write(const uint16_t& address, const uint8_t byte);
-	void MBC3Write(const uint16_t& address, const uint8_t byte);
-
 	std::function<uint8_t(const uint16_t&)> MBCRead{};
 
+	void MBCNoneWrite(const uint16_t& address, const uint8_t byte);
 	uint8_t MBCNoneRead(const uint16_t& address);
-	uint8_t MBC1Read(const uint16_t& address);
-	uint8_t MBC3Read(const uint16_t& address);
 
+	void MBC1Write(const uint16_t& address, const uint8_t byte);
+	uint8_t MBC1Read(const uint16_t& address);
+
+	void MBC3Write(const uint16_t& address, const uint8_t byte);
+	uint8_t MBC3Read(const uint16_t& address);
 };

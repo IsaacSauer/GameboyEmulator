@@ -108,17 +108,17 @@ void LR35902::Reset(const bool skipBoot)
 		memory[0xFF4B] = 0x00;
 		memory[0xFFFF] = 0x00;
 
-		Gameboy.GetLY() = 0;
+		//Gameboy.GetLY() = 0;
 	}
 }
 
 void LR35902::ExecuteNextOpcode()
 {
-	if (Halted)
-	{
-		Gameboy.AddCycles(1);
-		return;
-	}
+	//if (Halted)
+	//{
+	//	Gameboy.AddCycles(1);
+	//	return;
+	//}
 
 	m_opcode = Gameboy.ReadMemory(Register.pc++);
 
@@ -281,6 +281,7 @@ void LR35902::HandleInterupts()
 				case 4: Register.pc = 0x60;
 					break;//Joypad
 				}
+
 				InteruptsEnabled = false;
 				Gameboy.GetIF() &= ~(1 << bit);
 				break;
@@ -1986,8 +1987,6 @@ void LR35902::mycpu_init(size_t tester_instruction_mem_size, uint8_t* tester_ins
 		instruction_mem_size = tester_instruction_mem_size;
 		instruction_mem = tester_instruction_mem;
 
-		/* ... Initialize your CPU here ... */
-
 		std::cout << "Initializing the CPU ..." << std::endl;
 
 		Reset();
@@ -1996,10 +1995,6 @@ void LR35902::mycpu_init(size_t tester_instruction_mem_size, uint8_t* tester_ins
 
 void LR35902::mycpu_set_state(state* state)
 {
-	/* ... Load your CPU with state as described (e.g., registers) ... */
-
-	//std::cout << "Setting state of the cpu ..." << std::endl;
-
 	Gameboy.SetPaused(state->halted);
 	InteruptsEnabled = state->interrupts_master_enabled;
 
@@ -2019,10 +2014,6 @@ void LR35902::mycpu_set_state(state* state)
 
 void LR35902::mycpu_get_state(state* state)
 {
-	/* ... Copy your current CPU state into the provided struct ... */
-
-	//std::cout << "Getting the current state of the CPU ..." << std::endl;
-
 	state->SP = Register.sp;
 	state->PC = Register.pc;
 
@@ -2035,7 +2026,7 @@ void LR35902::mycpu_get_state(state* state)
 	state->reg8.H = Register.reg8.H;
 	state->reg8.L = Register.reg8.L;
 
-	state->halted = Halted;
+	state->halted = Gameboy.GetPaused();
 	state->interrupts_master_enabled = InteruptsEnabled;
 
 	state->num_mem_accesses = num_mem_accesses;
@@ -2044,8 +2035,6 @@ void LR35902::mycpu_get_state(state* state)
 
 void LR35902::mycpu_step()
 {
-	//std::cout << "executing an opcode" << std::endl;
-
 	int cycles = 0;
 	m_opcode = (uint8_t)mmu_read(Register.pc++);
 	if (m_opcode == 0xcb)

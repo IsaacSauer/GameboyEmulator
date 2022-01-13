@@ -23,11 +23,21 @@ void gbee::Emulator::LoadGame(const std::string& gbFile) const
 	for (uint8_t i{ 0 }; i < InstanceCount; ++i)
 	{
 		Instances[i].LoadGame(gbFile);
-		Instances[i].SetRunningVariable(true);
+		//Instances[i].SetRunningVariable(true);
 	}
 }
 
 void gbee::Emulator::Start() const
+{
+	for (long i{ 0 }; i < InstanceCount; ++i)
+	{
+		Instances[i].SetRunningVariable(true);
+		std::thread t = std::thread{ &GameBoy::Update, std::ref(Instances[i]) };
+		t.detach(); //We don't need to sync them, ever..
+	}
+}
+
+void gbee::Emulator::Reset()
 {
 	for (long i{ 0 }; i < InstanceCount; ++i)
 	{

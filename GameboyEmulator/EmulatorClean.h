@@ -32,10 +32,16 @@ namespace gbee
 		 * \param gbFile The ROM file to be read
 		 */
 		void LoadGame( const std::string &gbFile) const;
+
 		/**
 		 * \brief Starts the Gameboy instances
 		 */
 		void Start() const;
+
+		/**
+		 * \brief Resets the gameboy
+		 */
+		void Reset() const;
 
 		void TestCPU() const;
 		

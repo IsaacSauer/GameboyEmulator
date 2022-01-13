@@ -21,6 +21,7 @@ namespace gbee
 
 		void LoadGame(const std::string& gbFile) const;
 		void Start() const;
+		void Reset();
 		void TestCPU() const;
 
 		std::bitset<160 * 144 * 2> GetFrameBuffer(const uint8_t instanceID) const;

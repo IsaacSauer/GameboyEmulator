@@ -274,7 +274,7 @@ uint8_t GameBoy::ReadMemory(const uint16_t pos)
 		return Rom[pos];
 	if (pos == 0xFF00)
 		return GetJoypadState();
-	if (pos - 0x4000 <= 0x7FFF - 0x4000) //ROM Bank x
+	if (InRange(pos, 0x4000, 0x7FFF)) //ROM Bank x
 		return MBCRead(pos);
 	//return Rom[pos + ((ActiveRomRamBank.GetRomBank() - 1) * 0x4000)];
 	if (InRange(pos, 0xA000, 0xBFFF)) //RAM Bank x
@@ -306,15 +306,19 @@ void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 		return;
 	}
 
-	//if (Mbc != none)
-	//{
-	//	if (InRange(address, 0x0, 0x7fff))
-	//		MBCWrite(address, data); return;
+	if (Mbc != none)
+	{
+		if (InRange(address, 0x4000, 0x7fff))
+		{
+			MBCWrite(address, data);
+			return;
+		}
 
-	//	//External (cartridge) ram
-	//	if (InRange(address, 0xa000, 0xbfff))
-	//		MBCWrite(address, data); return;
-	//}
+		//External (cartridge) ram
+		if (InRange(address, 0xa000, 0xbfff))
+			MBCWrite(address, data);
+		return;
+	}
 
 	if (address <= 0x1FFF) //Enable/Disable RAM
 	{

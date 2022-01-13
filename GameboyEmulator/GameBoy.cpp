@@ -65,30 +65,34 @@ void GameBoy::LoadGame(const std::string& gbFile)
 	std::cout << "ram size: " << std::to_string(header.ramSizeValue) << std::endl;
 
 	RamBankEnabled = header.ramSizeValue;
+
+	int numberOfBanks{};
 	switch (header.ramSizeValue)
 	{
 	case 0x00:
-		RamBanks.resize(0x0);
+		numberOfBanks = 0;
 		break;
 	case 0x01:
-		RamBanks.resize(0x800);
+		//Listed in various unofficial docs as 2KB. However, a 2KB RAM chip was never used in a cartridge. The source for this value is unknown.
 		break;
 	case 0x02:
-		RamBanks.resize(0x2000);
+		numberOfBanks = 1;
 		break;
 	case 0x03:
-		RamBanks.resize(0x8000);
+		numberOfBanks = 4;
 		break;
 	case 0x04:
-		RamBanks.resize(0x20000);
+		numberOfBanks = 16;
 		break;
 	case 0x05:
-		RamBanks.resize(0x10000);
+		numberOfBanks = 8;
 		break;
 	default:
-		RamBanks.resize(0);
+		numberOfBanks = 0;
 		break;
 	}
+
+	RamBanks.resize(numberOfBanks * 0x8000);
 
 	std::cout << "memory bank: " << std::to_string(Mbc) << std::endl;
 	Cpu.Reset();

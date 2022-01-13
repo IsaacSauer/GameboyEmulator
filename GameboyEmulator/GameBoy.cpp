@@ -67,64 +67,31 @@ void GameBoy::LoadGame(const std::string& gbFile)
 	RamBankEnabled = header.ramSizeValue;
 	switch (header.ramSizeValue)
 	{
-	case 0:
-		numRamBanks = 0;
+	case 0x00:
+		RamBanks.resize(0x0);
 		break;
-	case 1:
-		numRamBanks = 1;
+	case 0x01:
+		RamBanks.resize(0x800);
 		break;
-	case 2:
-		numRamBanks = 1;
+	case 0x02:
+		RamBanks.resize(0x2000);
 		break;
-	case 3:
-		numRamBanks = 4;
+	case 0x03:
+		RamBanks.resize(0x8000);
 		break;
-	case 4:
-		numRamBanks = 16;
+	case 0x04:
+		RamBanks.resize(0x20000);
+		break;
+	case 0x05:
+		RamBanks.resize(0x10000);
+		break;
+	default:
+		RamBanks.resize(0);
 		break;
 	}
-
-	for (int i = 0; i < 17; i++)
-	{
-		uint8_t* ram = new uint8_t[0x2000];
-		memset(ram, 0, sizeof(ram));
-		RamBanks.push_back(ram);
-	}
-
-	for (int i = 0; i < 0x2000; i++)
-		RamBanks[0][i] = Memory[0xA000 + i];
-
-	//unsigned int actualRamSize{};
-
-	//switch (header.ramSizeValue)
-	//{
-	//case 0x00:
-	//	actualRamSize = 0x2000;
-	//	break;
-	//case 0x01:
-	//	actualRamSize = 0x800;
-	//	break;
-	//case 0x02:
-	//	actualRamSize = 0x2000;
-	//	break;
-	//case 0x03:
-	//	actualRamSize = 0x8000;
-	//	break;
-	//case 0x04:
-	//	actualRamSize = 0x20000;
-	//	break;
-	//case 0x05:
-	//	actualRamSize = 0x10000;
-	//	break;
-	//default:
-	//	actualRamSize = 0;
-	//	break;
-	//}
-
-	//RamBanks.resize(actualRamSize);
-	std::cout << "ram size: " << std::to_string(header.ramSizeValue) << std::endl;
 
 	std::cout << "memory bank: " << std::to_string(Mbc) << std::endl;
+	Cpu.Reset();
 }
 
 void GameBoy::Update()
@@ -262,7 +229,7 @@ GameHeader GameBoy::ReadHeader()
 	default:
 		assert(Rom[0x147] == 0x0); //if not 0x0 it's undocumented
 	}
-	
+
 	header.ramSizeValue = Rom[header::ram_size];
 
 	return header;
@@ -291,10 +258,10 @@ void GameBoy::Disassemble()
 	ofile.close();
 }
 
-uint8_t GameBoy::ReadMemory(const uint16_t pos) const
+uint8_t GameBoy::ReadMemory(const uint16_t pos)
 {
-	//if (m_TestingOpcodes)
-	//	return (uint8_t)Cpu.mmu_read(pos);
+	if (m_TestingOpcodes)
+		return (uint8_t)Cpu.mmu_read(pos);
 
 	if (InRange(pos, 0x0, 0x7FFF)) //RAM Bank x
 		return MBCRead(pos);
@@ -313,14 +280,14 @@ uint8_t GameBoy::ReadMemory(const uint16_t pos) const
 	return Memory[pos];
 }
 
-uint16_t GameBoy::ReadMemoryWord(uint16_t& pos) const
+uint16_t GameBoy::ReadMemoryWord(uint16_t& pos)
 {
-	//if (m_TestingOpcodes)
-	//{
-	//	const uint16_t res{ static_cast<uint16_t>(static_cast<uint16_t>(Cpu.mmu_read(pos)) | static_cast<uint16_t>(Cpu.mmu_read(pos + 1)) << 8) };
-	//	pos += 2;
-	//	return res;
-	//}
+	if (m_TestingOpcodes)
+	{
+		const uint16_t res{ static_cast<uint16_t>(static_cast<uint16_t>(Cpu.mmu_read(pos)) | static_cast<uint16_t>(Cpu.mmu_read(pos + 1)) << 8) };
+		pos += 2;
+		return res;
+	}
 
 	const uint16_t res{ static_cast<uint16_t>(static_cast<uint16_t>(ReadMemory(pos)) | static_cast<uint16_t>(ReadMemory(pos + 1)) << 8) };
 	pos += 2;
@@ -441,7 +408,7 @@ void GameBoy::SetKey(const Key key, const bool pressed)
 		}
 	}
 	else
-		JoyPadState |= 1 << key;
+		JoyPadState |= (1 << key);
 }
 
 void GameBoy::HandleTimers(const unsigned stepCycles, const unsigned cycleBudget)
@@ -550,7 +517,7 @@ void GameBoy::MBC1Write(const uint16_t& address, const uint8_t byte)
 		if (!RamBankEnabled) { return; }
 
 		auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
-		auto address_in_ram = address - 0xA000 + offset_into_ram;
+		auto address_in_ram = (address - 0xA000) + offset_into_ram;
 		RamBanks[address_in_ram] = byte;
 	}
 }
@@ -594,7 +561,7 @@ void GameBoy::MBC3Write(const uint16_t& address, const uint8_t byte)
 		if (m_Ram_Over_Rtc)
 		{
 			auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
-			auto address_in_ram = address - 0xA000 + offset_into_ram;
+			auto address_in_ram = (address - 0xA000) + offset_into_ram;
 			RamBanks[address_in_ram] = byte;
 		}
 	}
@@ -637,7 +604,7 @@ uint8_t GameBoy::MBC3Read(const uint16_t& address)
 	if (InRange(address, 0xA000, 0xBFFF))
 	{
 		auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
-		auto address_in_ram = address - 0xA000 + offset_into_ram;
+		auto address_in_ram = (address - 0xA000) + offset_into_ram;
 		return RamBanks[address_in_ram];
 	}
 

@@ -48,7 +48,7 @@ struct GameHeader final
 class GameBoy final
 {
 public:
-	GameBoy() : IsPaused{ false }, IsRunning{ false }, IsCycleFrameBound{ false }, OnlyDrawLast{ false }, AutoSpeed{ false } {};
+	GameBoy() : IsPaused{ false }, IsRunning{ false }, IsCycleFrameBound{ false }, OnlyDrawLast{ false }, AutoSpeed{ false } {}
 	GameBoy(const std::string& gameFile);
 	~GameBoy() = default;
 
@@ -212,7 +212,7 @@ Bits 1-0 - Input Clock Select
 
 			struct
 			{
-				uint8_t romBank : 5;
+				uint8_t romBank : 5; //this should never be 0 --> bank 0 is fixed in memory address 0x0-0x3FFF
 				uint8_t ramOrRomBank : 2;
 				bool isRam : 1;
 			};
@@ -229,7 +229,7 @@ Bits 1-0 - Input Clock Select
 		}
 	} ActiveRomRamBank{};
 	MBCs Mbc{};
-	std::vector<uint8_t> RamBanks{};
+	std::vector<uint8_t*> RamBanks{};
 	std::vector<uint8_t> Rom{};
 	bool RamBankEnabled : 1;
 	bool m_Ram_Over_Rtc = true;

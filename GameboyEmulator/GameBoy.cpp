@@ -12,7 +12,7 @@ GameBoy::GameBoy(const std::string& gameFile)
 }
 
 //values of banks needed / size etc retrieved from https://gbdev.gg8.se/wiki/articles/The_Cartridge_Header#0149_-_RAM_Size
-void GameBoy::LoadGame(const std::string& gbFile) 
+void GameBoy::LoadGame(const std::string& gbFile)
 {
 	fileName = gbFile;
 
@@ -31,6 +31,8 @@ void GameBoy::LoadGame(const std::string& gbFile)
 
 	////Disassmble required opcodes to txt file
 	//Disassemble();
+
+	Cpu.Reset();
 
 	const GameHeader header{ ReadHeader() };
 	Mbc = header.mbc;
@@ -60,38 +62,67 @@ void GameBoy::LoadGame(const std::string& gbFile)
 		break;
 	}
 
-	unsigned int actualRamSize{};
-
+	int numRamBanks = 0;
 	switch (header.ramSizeValue)
 	{
-	case 0x00:
-		actualRamSize = 0x2000;
+	case 0:
+		numRamBanks = 0;
 		break;
-	case 0x01:
-		actualRamSize = 0x800;
+	case 1:
+		numRamBanks = 1;
 		break;
-	case 0x02:
-		actualRamSize = 0x2000;
+	case 2:
+		numRamBanks = 1;
 		break;
-	case 0x03:
-		actualRamSize = 0x8000;
+	case 3:
+		numRamBanks = 4;
 		break;
-	case 0x04:
-		actualRamSize = 0x20000;
-		break;
-	case 0x05:
-		actualRamSize = 0x10000;
-		break;
-	default:
-		actualRamSize = 0;
+	case 4:
+		numRamBanks = 16;
 		break;
 	}
 
-	RamBanks.resize(actualRamSize);
+	for (int i = 0; i < 17; i++)
+	{
+		uint8_t* ram = new uint8_t[0x2000];
+		memset(ram, 0, sizeof(ram));
+		RamBanks.push_back(ram);
+	}
+
+	for (int i = 0; i < 0x2000; i++)
+		RamBanks[0][i] = Memory[0xA000 + i];
+
+	//unsigned int actualRamSize{};
+
+	//switch (header.ramSizeValue)
+	//{
+	//case 0x00:
+	//	actualRamSize = 0x2000;
+	//	break;
+	//case 0x01:
+	//	actualRamSize = 0x800;
+	//	break;
+	//case 0x02:
+	//	actualRamSize = 0x2000;
+	//	break;
+	//case 0x03:
+	//	actualRamSize = 0x8000;
+	//	break;
+	//case 0x04:
+	//	actualRamSize = 0x20000;
+	//	break;
+	//case 0x05:
+	//	actualRamSize = 0x10000;
+	//	break;
+	//default:
+	//	actualRamSize = 0;
+	//	break;
+	//}
+
+	//RamBanks.resize(actualRamSize);
 	std::cout << "ram size: " << std::to_string(header.ramSizeValue) << std::endl;
 
 	std::cout << "memory bank: " << std::to_string(Mbc) << std::endl;
-	Cpu.Reset();
 }
 
 void GameBoy::Update()
@@ -271,7 +302,7 @@ uint8_t GameBoy::ReadMemory(const uint16_t pos) const
 		return Rom[pos];
 	if (pos == 0xFF00)
 		return GetJoypadState();
-	if ( InRange(pos, 0x4000, 0x7FFF)) //ROM Bank x
+	if (InRange(pos, 0x4000, 0x7FFF)) //ROM Bank x
 		return Rom[pos + (ActiveRomRamBank.GetRomBank() - 1) * 0x4000];
 	if (InRange(pos, 0xA000, 0xBFFF)) //RAM Bank x
 		return RamBanks[(ActiveRomRamBank.GetRamBank() * 0x2000) + (pos - 0xA000)];
@@ -301,15 +332,29 @@ void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 		return;
 	}
 
+	////read only memory
 	//if (address < static_cast<uint16_t>(0x8000))
-	//{}
+	//{
+	//	HandleBanking(address, data);
+	//}
+	//else if (InRange(address,static_cast<uint16_t>(0xA000), static_cast<uint16_t>(0xC000)))
+	//{
+	//	if (RamBankEnabled)
+	//	{
+	//		uint16_t newAddress = address - 0xA000;
+	//		RamBanks[newAddress + (ActiveRomRamBank.GetRamBank() * 0x2000)] = data;
+	//	}
+	//}
+	////ECHO ram --> also write in RAM
 	//else if (InRange(address, static_cast<uint16_t>(0xE000), static_cast<uint16_t>(0xFE00)))
 	//{
 	//	Memory[address] = data;
 	//	WriteMemory(address - 0x2000, data);
 	//}
+	////restricted area
 	//else if (InRange(address, static_cast<uint16_t>(0xFEA0), static_cast<uint16_t>(0xFEFF)))
 	//{}
+	////no control needed
 	//else
 	//	Memory[address] = data;
 

@@ -90,21 +90,6 @@ void CraftPixelBuffer(const uint8_t instance, uint16_t* buffer)
 	}
 }
 
-void CraftPixelBuffer(const std::vector<uint16_t>& frameBuffer, uint16_t* buffer)
-{
-	//auto vector = frameBuffer.GetBuffer();
-	//memcpy((void*)buffer, (void*)vector.data(), vector.size() * sizeof(Color));
-
-	//	//std::bitset<160 * 144 * 2> bitBuffer{ buffer.GetBuffer()};
-	//
-	//#pragma loop(hint_parallel(20))
-	//	for (int i{ 0 }; i < 160 * 144; ++i)
-	//	{
-	//		const uint8_t val{ static_cast<uint8_t>(bitBuffer[i * 2] << 1 | static_cast<uint8_t>(bitBuffer[i * 2 + 1])) };
-	//		buffer[i] = 0xFFFF - val * 0x5555;
-	//	}
-}
-
 void VBlankCallback(const FrameBuffer& buffer)
 {
 	if (running && rendr)
@@ -187,8 +172,8 @@ int main(int argc, char* argv[])
 	{
 		gbee::Emulator emum{ path, 1 };
 		emu = &emum;
-		emum.AssignDrawCallback(VBlankCallback);
 		emum.LoadGame(path);
+		emum.AssignDrawCallback(VBlankCallback);
 		running = true;
 		emum.Start();
 

@@ -22,7 +22,7 @@ namespace gbee
 		 * \param gbfile The ROM file to be read
 		 * \param instances The amount of instances that will be spawned
 		 */
-		Emulator(const std::string& gbfile, const uint8_t instances);
+		Emulator();
 		~Emulator();
 
 		//lof

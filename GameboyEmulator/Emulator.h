@@ -14,7 +14,7 @@ namespace gbee
 	class Emulator final
 	{
 	public:
-		Emulator(const std::string& gbfile, const uint8_t instances);
+		Emulator();
 		~Emulator();
 
 		Emulator(const Emulator& rhs) = delete; //Copy constructor

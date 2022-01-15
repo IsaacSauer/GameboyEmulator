@@ -4,7 +4,7 @@
 #include "GameBoy.h"
 #include <thread>
 
-gbee::Emulator::Emulator(const std::string& gbfile, const uint8_t instances)
+gbee::Emulator::Emulator()
 {
 }
 
@@ -16,12 +16,6 @@ gbee::Emulator::~Emulator()
 
 void gbee::Emulator::LoadGame(const std::string& gbFile) 
 {
-	if (Instance)
-	{
-		Instance->SetRunningVariable(false);
-		delete Instance;
-	}
-
 	Instance = new GameBoy(gbFile);
 
 	Instance->LoadGame(gbFile);

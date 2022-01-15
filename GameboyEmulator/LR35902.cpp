@@ -60,22 +60,22 @@ LR35902::LR35902(GameBoy& gameboy)
 	, buffer(GAMEBOY_WIDTH, GAMEBOY_HEIGHT)
 	, background_map(BG_MAP_SIZE, BG_MAP_SIZE)
 {
-	//DisplayEnabled
-	control_byte = bitwise::set_bit_to(control_byte, 0, true);
-	//WindowTileMap
-	control_byte = bitwise::set_bit_to(control_byte, 1, true);
-	//WindowEnabled
-	control_byte = bitwise::set_bit_to(control_byte, 2, true);
-	//BgWindowTileData
-	control_byte = bitwise::set_bit_to(control_byte, 3, false);
-	//BgTileMapDisplay
-	control_byte = bitwise::set_bit_to(control_byte, 4, true);
-	//SpriteSize
-	control_byte = bitwise::set_bit_to(control_byte, 5, false);
-	//SpritesEnabled
-	control_byte = bitwise::set_bit_to(control_byte, 6, true);
-	//BgEnabled
-	control_byte = bitwise::set_bit_to(control_byte, 7, true);
+	////DisplayEnabled
+	//control_byte = bitwise::set_bit_to(control_byte, 0, true);
+	////WindowTileMap
+	//control_byte = bitwise::set_bit_to(control_byte, 1, true);
+	////WindowEnabled
+	//control_byte = bitwise::set_bit_to(control_byte, 2, true);
+	////BgWindowTileData
+	//control_byte = bitwise::set_bit_to(control_byte, 3, false);
+	////BgTileMapDisplay
+	//control_byte = bitwise::set_bit_to(control_byte, 4, true);
+	////SpriteSize
+	//control_byte = bitwise::set_bit_to(control_byte, 5, false);
+	////SpritesEnabled
+	//control_byte = bitwise::set_bit_to(control_byte, 6, true);
+	////BgEnabled
+	//control_byte = bitwise::set_bit_to(control_byte, 7, true);
 }
 
 void LR35902::Reset(const bool skipBoot)
@@ -323,7 +323,7 @@ void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, 
 {
 	LCDCycles += cycles;
 
-	if (false)
+	if (true)
 		switch (current_mode)
 		{
 		case VideoMode::ACCESS_OAM:
@@ -341,8 +341,8 @@ void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, 
 				LCDCycles = LCDCycles % CLOCKS_PER_SCANLINE_VRAM;
 				current_mode = VideoMode::HBLANK;
 				bool hblank_interrupt = bitwise::check_bit(Gameboy.GetLCDS(), 3);
-				//if (hblank_interrupt)
-				//	Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), 1, true);
+				if (hblank_interrupt)
+					Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), 1, true);
 				bool ly_coincidence_interrupt = bitwise::check_bit(Gameboy.GetLCDS(), 6);
 				bool ly_coincidence = ly_compare.value() == Gameboy.GetLY();
 				if (ly_coincidence_interrupt && ly_coincidence)
@@ -2357,14 +2357,14 @@ bool LR35902::IsOnScreenX(uint8_t x) { return x < GAMEBOY_WIDTH; }
 bool LR35902::IsOnScreenY(uint8_t y) { return y < GAMEBOY_HEIGHT; }
 bool LR35902::IsOnScreen(uint8_t x, uint8_t y) { return IsOnScreenX(x) && IsOnScreenY(y); }
 
-bool LR35902::DisplayEnabled() const { return bitwise::check_bit(control_byte, 7); }
-bool LR35902::WindowTileMap() const { return bitwise::check_bit(control_byte, 6); }
-bool LR35902::WindowEnabled() const { return bitwise::check_bit(control_byte, 5); }
-bool LR35902::BgWindowTileData() const { return bitwise::check_bit(control_byte, 4); }
-bool LR35902::BgTileMapDisplay() const { return bitwise::check_bit(control_byte, 3); }
-bool LR35902::SpriteSize() const { return bitwise::check_bit(control_byte, 2); }
-bool LR35902::SpritesEnabled() const { return bitwise::check_bit(control_byte, 1); }
-bool LR35902::BgEnabled() const { return bitwise::check_bit(control_byte, 0); }
+bool LR35902::DisplayEnabled() const { return bitwise::check_bit(Gameboy.GetLCDC(), 7); }
+bool LR35902::WindowTileMap() const { return bitwise::check_bit(Gameboy.GetLCDC(), 6); }
+bool LR35902::WindowEnabled() const { return bitwise::check_bit(Gameboy.GetLCDC(), 5); }
+bool LR35902::BgWindowTileData() const { return bitwise::check_bit(Gameboy.GetLCDC(), 4); }
+bool LR35902::BgTileMapDisplay() const { return bitwise::check_bit(Gameboy.GetLCDC(), 3); }
+bool LR35902::SpriteSize() const { return bitwise::check_bit(Gameboy.GetLCDC(), 2); }
+bool LR35902::SpritesEnabled() const { return bitwise::check_bit(Gameboy.GetLCDC(), 1); }
+bool LR35902::BgEnabled() const { return bitwise::check_bit(Gameboy.GetLCDC(), 0); }
 
 TileInfo LR35902::GetTileInfo(Address titleSetLocation, uint8_t titleId, uint8_t titleLine) const
 {

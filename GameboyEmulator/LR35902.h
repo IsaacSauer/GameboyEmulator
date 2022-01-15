@@ -819,8 +819,6 @@ public:
 
 	void register_vblank_callback(const vblank_callback_t& _vblank_callback);
 
-	u8 control_byte{(u8)0xFFFF};
-
 	ByteRegister scroll_y{};
 	ByteRegister scroll_x{};
 

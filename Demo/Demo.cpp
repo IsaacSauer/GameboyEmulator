@@ -133,7 +133,7 @@ void Update()
 		std::unique_lock<std::mutex> guard(m);
 
 		//DRAWING
-		if (false)
+		if (true)
 			SDL_UpdateTexture(textures[0], nullptr, static_cast<void*>(frameBuffer.data()), 160 * sizeof(uint16_t));
 		else
 		{

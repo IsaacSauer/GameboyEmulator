@@ -10,7 +10,7 @@
 GameBoy::GameBoy(const std::string& gameFile)
 	: GameBoy{}
 {
-	LoadGame(gameFile);
+	//LoadGame(gameFile);
 }
 
 //values of banks needed / size etc retrieved from https://gbdev.gg8.se/wiki/articles/The_Cartridge_Header#0149_-_RAM_Size

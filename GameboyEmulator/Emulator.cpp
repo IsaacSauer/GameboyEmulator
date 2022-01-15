@@ -4,78 +4,92 @@
 #include "GameBoy.h"
 #include <thread>
 
-gbee::Emulator::Emulator()
+gbee::Emulator::Emulator(const std::string& gbfile, const uint8_t instances) : InstanceCount{ instances }
 {
+	Instances = new GameBoy[InstanceCount];
 }
 
 gbee::Emulator::~Emulator()
 {
-	Instance->SetRunningVariable(false);
-	delete Instance;
+	for (int i{ 0 }; i < InstanceCount; ++i)
+	{
+		Instances[i].SetRunningVariable(false);
+	}
+	delete[] Instances;
 }
 
-void gbee::Emulator::LoadGame(const std::string& gbFile) 
+void gbee::Emulator::LoadGame(const std::string& gbFile) const
 {
-	Instance = new GameBoy(gbFile);
-
-	Instance->LoadGame(gbFile);
+	Instances[0].LoadGame(gbFile);
+	//Instances[i].SetRunningVariable(true);
 }
 
 void gbee::Emulator::Start()
 {
-	Instance->SetRunningVariable(true);
-	thread = std::thread{ &GameBoy::Update, Instance };
-	thread.detach(); //We don't need to sync them, ever..
+	Instances[0].SetRunningVariable(true);
+	thread = std::thread{ &GameBoy::Update, std::ref(Instances[0]) };
+	//thread.detach(); //We don't need to sync them, ever..
 }
 
 void gbee::Emulator::Stop()
 {
-	Instance->SetRunningVariable(false);
+	Instances[0].SetRunningVariable(false);
 }
 
 void gbee::Emulator::AssignDrawCallback(const std::function<void(const FrameBuffer&)>&& _vblank_callback)
 {
-	Instance->AssignDrawCallback(_vblank_callback);
+	Instances[0].AssignDrawCallback(_vblank_callback);
+}
+
+void gbee::Emulator::Reset()
+{
+	for (long i{ 0 }; i < InstanceCount; ++i)
+	{
+		Instances[i].SetRunningVariable(true);
+		std::thread t = std::thread{ &GameBoy::Update, std::ref(Instances[i]) };
+		t.detach(); //We don't need to sync them, ever..
+	}
 }
 
 void gbee::Emulator::TestCPU() const
 {
-	Instance->TestCPU();
+	for (uint8_t i{ 0 }; i < InstanceCount; ++i)
+		Instances[i].TestCPU();
 }
 
-std::bitset<160 * 144 * 2> gbee::Emulator::GetFrameBuffer(const uint8_t instanceID) 
+std::bitset<160 * 144 * 2> gbee::Emulator::GetFrameBuffer(const uint8_t instanceID) const
 {
-	return Instance->GetFramebuffer();
+	return Instances[instanceID].GetFramebuffer();
 }
 
-void gbee::Emulator::SetKeyState(const uint8_t key, const bool state, const uint8_t instanceID) 
+void gbee::Emulator::SetKeyState(const uint8_t key, const bool state, const uint8_t instanceID) const
 {
-	Instance->SetKey((Key)key, state);
+	Instances[instanceID].SetKey((Key)key, state);
 }
 
-void gbee::Emulator::SetPauseState(const bool state, const uint8_t instanceID) 
+void gbee::Emulator::SetPauseState(const bool state, const uint8_t instanceID) const
 {
-	Instance->SetPaused(state);
+	Instances[instanceID].SetPaused(state);
 }
 
 bool gbee::Emulator::GetPauseState(const uint8_t instanceID) const
 {
-	return Instance->GetPaused();
+	return Instances[instanceID].GetPaused();
 }
 
-void gbee::Emulator::SetSpeed(const uint16_t cycleMultiplier, const uint8_t instanceID) 
+void gbee::Emulator::SetSpeed(const uint16_t cycleMultiplier, const uint8_t instanceID) const
 {
-	Instance->SetSpeedMultiplier(cycleMultiplier);
+	Instances[instanceID].SetSpeedMultiplier(cycleMultiplier);
 }
 
 uint16_t gbee::Emulator::GetSpeed(const uint8_t instanceID) const
 {
-	return Instance->GetSpeedMultiplier();
+	return Instances[instanceID].GetSpeedMultiplier();
 }
 
-void gbee::Emulator::SetAutoSpeed(const bool onOff, const uint8_t instanceID) 
+void gbee::Emulator::SetAutoSpeed(const bool onOff, const uint8_t instanceID) const
 {
-	Instance->SetAutoSpeed(onOff);
+	Instances[instanceID].SetAutoSpeed(onOff);
 }
 
 void gbee::Emulator::Join()
@@ -83,18 +97,21 @@ void gbee::Emulator::Join()
 	thread.join();
 }
 
-void gbee::Emulator::RunForCycles(const unsigned short cycles, const uint8_t instanceID) 
+void gbee::Emulator::RunForCycles(const unsigned short cycles, const uint8_t instanceID) const
 {
-	Instance->SetCyclesToRun(cycles);
+	Instances[instanceID].SetCyclesToRun(cycles);
 }
 
-void gbee::Emulator::RunForFrames(const unsigned short frames, const bool onlyDrawLastFrame, const uint8_t instanceID) 
+void gbee::Emulator::RunForFrames(const unsigned short frames, const bool onlyDrawLastFrame, const uint8_t instanceID) const
 {
-	Instance->SetFramesToRun(frames);
-	Instance->SetOnlyDrawLastFrame(onlyDrawLastFrame);
+	Instances[instanceID].SetFramesToRun(frames);
+	Instances[instanceID].SetOnlyDrawLastFrame(onlyDrawLastFrame);
 }
 
-void gbee::Emulator::Update(const float fps) 
+void gbee::Emulator::Update(const float fps) const
 {
-	Instance->Update();
+	for (uint8_t i{ 0 }; i < InstanceCount; ++i)
+	{
+		Instances[i].Update();
+	}
 }

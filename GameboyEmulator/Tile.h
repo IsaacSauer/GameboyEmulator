@@ -74,7 +74,7 @@ public:
 	void set_pixel(unsigned int x, unsigned int y, Color color);
 	auto get_pixel(unsigned int x, unsigned int y) const->Color;
 
-	std::vector<uint16_t> GetBuffer() const { return *(std::vector<uint16_t>*)(&buffer); }
+	std::vector<uint16_t>& GetBuffer() const { return *(std::vector<uint16_t>*)(&buffer); }
 
 	void reset();
 

@@ -16,8 +16,8 @@
 
 SDL_Window* wind{};
 SDL_Renderer* rendr{};
-SDL_Texture* texture;
-gbee::Emulator emu{ };
+SDL_Texture* textures[INSTANCECOUNT];
+gbee::Emulator* emu{ };
 //gbee::Emulator emu{ "PinballFantasies(USA,Europe).gb", INSTANCECOUNT };
 
 std::mutex m;
@@ -62,7 +62,7 @@ void SetKeyState(const SDL_Event& event)
 	default:
 		return;
 	}
-	emu.SetKeyState(key, event.type == SDL_KEYDOWN, 0);
+	emu->SetKeyState(key, event.type == SDL_KEYDOWN, 0);
 }
 
 bool SDLEventPump()
@@ -80,7 +80,7 @@ bool SDLEventPump()
 
 void CraftPixelBuffer(const uint8_t instance, uint16_t* buffer)
 {
-	std::bitset<160 * 144 * 2> bitBuffer{ emu.GetFrameBuffer(instance) };
+	std::bitset<160 * 144 * 2> bitBuffer{ emu->GetFrameBuffer(instance) };
 
 #pragma loop(hint_parallel(20))
 	for (int i{ 0 }; i < 160 * 144; ++i)
@@ -90,9 +90,24 @@ void CraftPixelBuffer(const uint8_t instance, uint16_t* buffer)
 	}
 }
 
+void CraftPixelBuffer(const std::vector<uint16_t>& frameBuffer, uint16_t* buffer)
+{
+	//auto vector = frameBuffer.GetBuffer();
+	//memcpy((void*)buffer, (void*)vector.data(), vector.size() * sizeof(Color));
+
+	//	//std::bitset<160 * 144 * 2> bitBuffer{ buffer.GetBuffer()};
+	//
+	//#pragma loop(hint_parallel(20))
+	//	for (int i{ 0 }; i < 160 * 144; ++i)
+	//	{
+	//		const uint8_t val{ static_cast<uint8_t>(bitBuffer[i * 2] << 1 | static_cast<uint8_t>(bitBuffer[i * 2 + 1])) };
+	//		buffer[i] = 0xFFFF - val * 0x5555;
+	//	}
+}
+
 void VBlankCallback(const FrameBuffer& buffer)
 {
-	if (rendr)
+	if (running && rendr)
 	{
 		//lock
 		std::lock_guard<std::mutex> guard(m);
@@ -103,25 +118,28 @@ void VBlankCallback(const FrameBuffer& buffer)
 		//unlock
 		cv.notify_one();
 	}
+
+	if (!running)
+		cv.notify_one();
 }
 
 void Update()
 {
 	const float fps{ 59.73f };
 
-	while (SDLEventPump())
+	while (SDLEventPump() && running)
 	{
 		//lock
 		std::unique_lock<std::mutex> guard(m);
 
 		//DRAWING
 		if (true)
-			SDL_UpdateTexture(texture, nullptr, static_cast<void*>(frameBuffer.data()), 160 * sizeof(uint16_t));
+			SDL_UpdateTexture(textures[0], nullptr, static_cast<void*>(frameBuffer.data()), 160 * sizeof(uint16_t));
 		else
 		{
 			uint16_t pixelBuffer[160 * 144]{};
 			CraftPixelBuffer(static_cast<uint8_t>(0), pixelBuffer);
-			SDL_UpdateTexture(texture, nullptr, static_cast<void*>(pixelBuffer), 160 * sizeof(uint16_t));
+			SDL_UpdateTexture(textures[0], nullptr, static_cast<void*>(pixelBuffer), 160 * sizeof(uint16_t));
 		}
 
 		guard.unlock();
@@ -132,7 +150,7 @@ void Update()
 		texture_rect.y = 0; // the y coordinate
 		texture_rect.w = 800; //the width of the texture
 		texture_rect.h = 720; //the height of the texture
-		SDL_RenderCopy(rendr, texture, NULL, &texture_rect);
+		SDL_RenderCopy(rendr, textures[0], NULL, &texture_rect);
 		SDL_RenderPresent(rendr);
 
 		guard.lock();
@@ -140,12 +158,16 @@ void Update()
 		cv.wait(guard);
 	}
 
-	//emu.Stop();
+	emu->Stop();
+	running = false;
 	ImGuiSDL::Deinitialize();
 
 	SDL_DestroyRenderer(rendr);
 	SDL_DestroyWindow(wind);
-	SDL_DestroyTexture(texture);
+	for (int i{ 0 }; i < 1; ++i)
+	{
+		SDL_DestroyTexture(textures[i]);
+	}
 
 	ImGui::DestroyContext();
 }
@@ -157,26 +179,32 @@ int main(int argc, char* argv[])
 	std::string path{};
 	if (false)
 	{
-		gbee::Emulator testEmu{};
-		testEmu.LoadGame("Tetris(JUE)(V1.1)[!].gb");
+		gbee::Emulator testEmu{ "Tetris(JUE)(V1.1)[!].gb", INSTANCECOUNT };
 		testEmu.TestCPU();
 	}
 	//Choose rom
 	else if (OpenFileDialog(path))
 	{
-		emu.LoadGame(path);
-		emu.AssignDrawCallback(VBlankCallback);
-		emu.Start();
+		gbee::Emulator emum{ path, 1 };
+		emu = &emum;
+		emum.AssignDrawCallback(VBlankCallback);
+		emum.LoadGame(path);
+		running = true;
+		emum.Start();
 
 		std::string base_filename = path.substr(path.find_last_of("/\\") + 1);
 		wind = SDL_CreateWindow(base_filename.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 720, SDL_WINDOW_RESIZABLE);
 		rendr = SDL_CreateRenderer(wind, -1, SDL_RENDERER_ACCELERATED);
 
-		texture = SDL_CreateTexture(rendr, SDL_PIXELFORMAT_RGBA4444, SDL_TEXTUREACCESS_STREAMING, 160, 144);
-		SDL_SetRenderTarget(rendr, texture);
-		SDL_SetRenderDrawColor(rendr, 255, 0, 255, 255);
-		SDL_RenderClear(rendr);
-		SDL_SetRenderTarget(rendr, nullptr);
+		for (int i{ 0 }; i < INSTANCECOUNT; ++i)
+		{
+			textures[i] = SDL_CreateTexture(rendr, SDL_PIXELFORMAT_RGBA4444, SDL_TEXTUREACCESS_STREAMING, 160, 144);
+
+			SDL_SetRenderTarget(rendr, textures[i]);
+			SDL_SetRenderDrawColor(rendr, 255, 0, 255, 255);
+			SDL_RenderClear(rendr);
+			SDL_SetRenderTarget(rendr, nullptr);
+		}
 
 		ImGui::CreateContext();
 		ImGuiSDL::Initialize(rendr, 800, 720);

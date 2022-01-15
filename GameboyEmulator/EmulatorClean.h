@@ -1,6 +1,9 @@
 #pragma once
 #include <string>
 #include <bitset>
+#include <functional>
+
+class FrameBuffer;
 
 /**
  * \brief GameBoy Emulation Environment
@@ -36,12 +39,17 @@ namespace gbee
 		/**
 		 * \brief Starts the Gameboy instances
 		 */
-		void Start() const;
+		void Start();
 
 		/**
-		 * \brief Resets the gameboy
+		 * \brief Stops the Gameboy instances
 		 */
-		void Reset() const;
+		void Stop();
+
+		/**
+		 * \brief Sets the draw callback
+		 */
+		void AssignDrawCallback(const std::function<void(const FrameBuffer&)>&& _vblank_callback);
 
 		void TestCPU() const;
 		
@@ -100,5 +108,7 @@ namespace gbee
 		 * \note In the end, no real benefit is gained from this. Setting the speed crazy high and the auto adjuster disabled will also guarantee the highest speed
 		 */
 		void SetAutoSpeed( const bool onOff, const uint8_t instanceID ) const;
+
+		void Join();
 	};
 }

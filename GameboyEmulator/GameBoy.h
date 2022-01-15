@@ -6,6 +6,8 @@
 #include <bitset>
 #include "Register.h"
 
+class FrameBuffer;
+
 enum MBCs : uint8_t { none, mbc1, mbc2, mbc3, mbc4, mbc5, unknown };
 enum Interupts : uint8_t
 {
@@ -43,6 +45,7 @@ public:
 
 	void TestCPU();
 	void Disassemble();
+	void AssignDrawCallback(const std::function<void(const FrameBuffer&)>& _vblank_callback);
 
 	/**
 	 * \brief Provides access to the raw memory array
@@ -97,9 +100,9 @@ public:
  Bit 3-2 - Shade for Color Number 1
  Bit 1-0 - Shade for Color Number 0\endcode
 	 */
-	std::bitset<(160 * 144) * 2>& GetFramebuffer() noexcept { return FrameBuffer; }
-	const std::bitset<(160 * 144) * 2>& GetFramebuffer() const noexcept { return FrameBuffer; }
-	uint8_t GetPixelColor(const uint16_t pixel) const { return FrameBuffer[pixel * 2] << 1 | static_cast<uint8_t>(FrameBuffer[pixel * 2 + 1]); }
+	std::bitset<(160 * 144) * 2>& GetFramebuffer() noexcept { return frameBuffer; }
+	const std::bitset<(160 * 144) * 2>& GetFramebuffer() const noexcept { return frameBuffer; }
+	uint8_t GetPixelColor(const uint16_t pixel) const { return frameBuffer[pixel * 2] << 1 | static_cast<uint8_t>(frameBuffer[pixel * 2 + 1]); }
 
 	void AddCycles(const unsigned cycles) { CurrentCycles += cycles; }
 	unsigned int GetCycles() const noexcept { return CurrentCycles; }
@@ -142,7 +145,7 @@ private:
 	unsigned int CurrentCycles{};
 	unsigned int DivCycles{}, TIMACycles{};
 
-	std::bitset<(160 * 144) * 2> FrameBuffer{};
+	std::bitset<(160 * 144) * 2> frameBuffer{};
 
 	uint8_t& DIVTimer{ (Memory[0xFF04]) }; ///< DIVider\note Constant accumulation at 16384Hz, regardless\n Resets when written to
 	uint8_t& TIMATimer{ (Memory[0xFF05]) }; ///< Timer Counter(Accumulator?)\note Incremented by the TAC frequency \n When it overflows, it is set equal to the TMA and an INT 50 is fired

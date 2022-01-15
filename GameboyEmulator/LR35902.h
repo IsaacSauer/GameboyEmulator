@@ -7,6 +7,7 @@
 #include <atomic>
 
 #include "opc_test\tester.h"
+#include "Tile.h"
 
 class GameBoy;
 struct state;
@@ -109,12 +110,18 @@ struct Registers final
 	uint16_t pc{}, sp{};
 };
 
-enum class VideoMode {
+//VIDEO
+enum class VideoMode
+{
 	ACCESS_OAM,
 	ACCESS_VRAM,
 	HBLANK,
 	VBLANK,
 };
+const unsigned int GAMEBOY_WIDTH = 160;
+const unsigned int GAMEBOY_HEIGHT = 144;
+const unsigned int BG_MAP_SIZE = 256;
+const int CLOCK_RATE = 4194304;
 
 class LR35902 final
 {
@@ -803,9 +810,73 @@ public:
 
 	uint16_t mmu_read(uint16_t addr);
 
-	private:
-		VideoMode current_mode = VideoMode::ACCESS_OAM;
-		void ResetFrameBuffer();
+#pragma region VIDEO
+	//Copyright (c) 2015-2021 Jonathan Gilchrist
+	//All rights reserved.
+	//Source: https://github.com/jgilchrist/gbemu/blob/master/src
+public:
+	using vblank_callback_t = std::function<void(const FrameBuffer&)>;
+
+	void register_vblank_callback(const vblank_callback_t& _vblank_callback);
+
+	u8 control_byte{(u8)0xFFFF};
+
+	ByteRegister scroll_y{};
+	ByteRegister scroll_x{};
+
+	/* LCDC Y-coordinate */
+	ByteRegister ly_compare{};
+
+	ByteRegister window_y{};
+	ByteRegister window_x{}; /* Note: x - 7 */
+
+	ByteRegister bg_palette{};
+	ByteRegister sprite_palette_0{}; /* OBP0 */
+	ByteRegister sprite_palette_1{}; /* OBP1 */
+
+	/* TODO: LCD Color Palettes (CGB) */
+	/* TODO: LCD VRAM Bank (CGB) */
+
+	ByteRegister dma_transfer{}; /* DMA */
+	FrameBuffer& GetBuffer() { return buffer; }
+private:
+	void ResetFrameBuffer();
+
+	void WriteScanline(uint8_t currentLine);
+	void WriteSprites();
+	void Draw();
+	void DrawBackgroundLine(unsigned int currentLine);
+	void DrawWindowLine(unsigned int currentLine);
+	void DrawSprite(unsigned int spriteN);
+	static GBColor GetPixelFromLine(uint8_t byte1, uint8_t byte2, uint8_t pixelIndex);
+
+	static bool IsOnScreen(uint8_t x, uint8_t y);
+	static bool IsOnScreenX(uint8_t x);
+	static bool IsOnScreenY(uint8_t y);
+
+	bool DisplayEnabled() const;
+	bool WindowTileMap() const;
+	bool WindowEnabled() const;
+	bool BgWindowTileData() const;
+	bool BgTileMapDisplay() const;
+	bool SpriteSize() const;
+	bool SpritesEnabled() const;
+	bool BgEnabled() const;
+
+	TileInfo GetTileInfo(Address titleSetLocation, uint8_t titleId, uint8_t titleLine) const;
+
+	static Color GetRealColor(uint8_t pixelValue);
+	static Palette LoadPalette(ByteRegister& palette_register);
+	static Color GetColorFromPalette(GBColor color, const Palette& palette);
+
+	FrameBuffer buffer;
+	FrameBuffer background_map;
+
+	VideoMode current_mode = VideoMode::ACCESS_OAM;
+
+	vblank_callback_t vblank_callback;
+
+#pragma endregion
 };
 
 const unsigned int CLOCKS_PER_HBLANK = 204; /* Mode 0 */

@@ -1,6 +1,9 @@
 #pragma once
 #include <bitset>
+#include <functional>
+#include <thread>
 
+class FrameBuffer;
 class GameBoy;
 
 /**
@@ -20,7 +23,9 @@ namespace gbee
 		Emulator& operator=(Emulator&& lhs) = delete; //Move Assignment
 
 		void LoadGame(const std::string& gbFile) const;
-		void Start() const;
+		void Start();
+		void Stop();
+		void AssignDrawCallback(const std::function<void(const FrameBuffer&)>&& _vblank_callback);
 		void Reset();
 		void TestCPU() const;
 
@@ -38,11 +43,15 @@ namespace gbee
 		uint16_t GetSpeed(const uint8_t instanceID) const;
 		void SetAutoSpeed(const bool onOff, const uint8_t instanceID) const; //Worthless really, when speed is set to MAXINT, it'll go as fast as possible..
 
+		void Join();
+
 	private:
 		GameBoy* Instances;
 		const uint8_t InstanceCount;
 		//std::string GbFile;
 
 		void Update(float fps) const;
+
+		std::thread thread{};
 	};
 }

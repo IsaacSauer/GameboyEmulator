@@ -5,6 +5,7 @@
 #include <time.h>
 #include "opc_test/disassembler.h"
 #include "CartridgeInfo.h"
+#include "Tile.h"
 
 GameBoy::GameBoy(const std::string& gameFile)
 	: GameBoy{}
@@ -128,7 +129,7 @@ void GameBoy::Update()
 
 			//4194304 cycles can be done in a second (standard gameboy)
 			const unsigned int cycleBudget{ static_cast<unsigned>(ceil(4194304.0f / fps)) * SpeedMultiplier };
-			while (!IsPaused && CurrentCycles < cycleBudget)
+			while (IsRunning && !IsPaused && CurrentCycles < cycleBudget)
 			{
 				unsigned int stepCycles{ CurrentCycles };
 				Cpu.ExecuteNextOpcode();
@@ -262,6 +263,11 @@ void GameBoy::Disassemble()
 	ofile.close();
 }
 
+void GameBoy::AssignDrawCallback(const std::function<void(const FrameBuffer&)>& _vblank_callback)
+{
+	Cpu.register_vblank_callback(_vblank_callback);
+}
+
 uint8_t GameBoy::ReadMemory(const uint16_t pos)
 {
 	if (m_TestingOpcodes)
@@ -306,7 +312,7 @@ void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 		return;
 	}
 
-	if (Mbc != none)
+	if (Mbc == mbc3)
 	{
 		if (InRange(address, 0x4000, 0x7fff))
 		{
@@ -579,6 +585,8 @@ uint8_t GameBoy::MBCNoneRead(const uint16_t& address)
 {
 	if(address < Rom.size())
 		return Rom[address];
+
+	return 0;
 }
 
 uint8_t GameBoy::MBC1Read(const uint16_t& address)

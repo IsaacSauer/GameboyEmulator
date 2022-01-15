@@ -13,6 +13,7 @@
 #include <iostream>
 #include "opc_test/disassembler.h"
 #include "bitwise.h"
+#include "Register.h"
 
 static int cycles_per_instruction[] = {
 	/* 0   1   2   3   4   5   6   7   8   9   a   b   c   d   e   f       */
@@ -56,7 +57,25 @@ static int cycles_per_instruction_cb[] = {
 
 LR35902::LR35902(GameBoy& gameboy)
 	: Gameboy{ gameboy }
+	, buffer(GAMEBOY_WIDTH, GAMEBOY_HEIGHT)
+	, background_map(BG_MAP_SIZE, BG_MAP_SIZE)
 {
+	//DisplayEnabled
+	control_byte = bitwise::set_bit_to(control_byte, 0, true);
+	//WindowTileMap
+	control_byte = bitwise::set_bit_to(control_byte, 1, true);
+	//WindowEnabled
+	control_byte = bitwise::set_bit_to(control_byte, 2, true);
+	//BgWindowTileData
+	control_byte = bitwise::set_bit_to(control_byte, 3, false);
+	//BgTileMapDisplay
+	control_byte = bitwise::set_bit_to(control_byte, 4, true);
+	//SpriteSize
+	control_byte = bitwise::set_bit_to(control_byte, 5, false);
+	//SpritesEnabled
+	control_byte = bitwise::set_bit_to(control_byte, 6, true);
+	//BgEnabled
+	control_byte = bitwise::set_bit_to(control_byte, 7, true);
 }
 
 void LR35902::Reset(const bool skipBoot)
@@ -108,7 +127,7 @@ void LR35902::Reset(const bool skipBoot)
 		memory[0xFF4B] = 0x00;
 		memory[0xFFFF] = 0x00;
 
-		//Gameboy.GetLY() = 0;
+		Gameboy.GetLY() = 0;
 	}
 }
 
@@ -302,95 +321,108 @@ bool LR35902::HandleInterrupt(u8 interrupt_bit, u16 interrupt_vector, u8 fired_i
 }
 void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, const bool draw) noexcept
 {
-	//LCDCycles += cycles;
+	LCDCycles += cycles;
 
-	//switch (current_mode)
-	//{
-	//case VideoMode::ACCESS_OAM:
-	//	if (LCDCycles >= CLOCKS_PER_SCANLINE_OAM)
-	//	{
-	//		LCDCycles %= CLOCKS_PER_SCANLINE_OAM;
-	//		Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
-	//		Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, true);
-	//		current_mode = VideoMode::ACCESS_VRAM;
-	//	}
-	//	break;
-	//case VideoMode::ACCESS_VRAM:
-	//	if (LCDCycles >= CLOCKS_PER_SCANLINE_VRAM)
-	//	{
-	//		LCDCycles %= CLOCKS_PER_SCANLINE_VRAM;
-	//		current_mode = VideoMode::HBLANK;
-	//		DrawLine();
-	//		bool hblank_interrupt = bitwise::check_bit(Gameboy.GetLCDS(), 3);
-	//		if (hblank_interrupt)
-	//			Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), 1, true);
-	//		bool ly_coincidence_interrupt = bitwise::check_bit(Gameboy.GetLCDS(), 6);
-	//		bool ly_coincidence = /*ly_compare.value() ==*/ Gameboy.GetLY();
-	//		if (ly_coincidence_interrupt && ly_coincidence)
-	//			Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), 1, true);
-	//		Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 2, ly_coincidence);
-	//		Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
-	//		Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, true);
-	//	}
-	//	break;
-	//case VideoMode::HBLANK:
-	//	if (LCDCycles >= CLOCKS_PER_HBLANK)
-	//	{
-	//		//DrawBackground();
-	//		//DrawWindow(); //window == ui
-	//		++Gameboy.GetLY();
-	//		LCDCycles %= CLOCKS_PER_HBLANK;
-	//		if (Gameboy.GetLY() == 144)
-	//		{
-	//			current_mode = VideoMode::VBLANK;
-	//			Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, false);
-	//			Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, true);
-	//			Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), 0, true);
-	//		}
-	//		else
-	//		{
-	//			Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
-	//			Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, false);
-	//			current_mode = VideoMode::ACCESS_OAM;
-	//		}
-	//	}
-	//	break;
-	//case VideoMode::VBLANK:
-	//	if (LCDCycles >= CLOCKS_PER_SCANLINE)
-	//	{
-	//		++Gameboy.GetLY();
-	//		LCDCycles %= CLOCKS_PER_SCANLINE;
-	//		if (Gameboy.GetLY() == 154)
-	//		{
-	//			DrawSprites();
-	//			ResetFrameBuffer();
-	//			Gameboy.GetLY() = 0;
-	//			current_mode = VideoMode::ACCESS_OAM;
-	//			Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
-	//			Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, false);
-	//		}
-	//	}
-	//	break;
-	//default:
-	//	break;
-	//}
+	if (false)
+		switch (current_mode)
+		{
+		case VideoMode::ACCESS_OAM:
+			if (LCDCycles >= CLOCKS_PER_SCANLINE_OAM)
+			{
+				LCDCycles = LCDCycles % CLOCKS_PER_SCANLINE_OAM;
+				Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
+				Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, true);
+				current_mode = VideoMode::ACCESS_VRAM;
+			}
+			break;
+		case VideoMode::ACCESS_VRAM:
+			if (LCDCycles >= CLOCKS_PER_SCANLINE_VRAM)
+			{
+				LCDCycles = LCDCycles % CLOCKS_PER_SCANLINE_VRAM;
+				current_mode = VideoMode::HBLANK;
+				bool hblank_interrupt = bitwise::check_bit(Gameboy.GetLCDS(), 3);
+				//if (hblank_interrupt)
+				//	Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), 1, true);
+				bool ly_coincidence_interrupt = bitwise::check_bit(Gameboy.GetLCDS(), 6);
+				bool ly_coincidence = ly_compare.value() == Gameboy.GetLY();
+				if (ly_coincidence_interrupt && ly_coincidence)
+					Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), 1, true);
+				Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 2, ly_coincidence);
+				Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
+				Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, true);
+			}
+			break;
+		case VideoMode::HBLANK:
+			if (LCDCycles >= CLOCKS_PER_HBLANK)
+			{
+				WriteScanline(Gameboy.GetLY());
 
-	const unsigned cyclesOneDraw{ 456 };
-	ConfigureLCDStatus(); //This is why we can't "speed this up" in the traditional sense, games are sensitive to this
-	if (Gameboy.GetLY() > 153)
-		Gameboy.GetLY() = 0;
-	if ((Gameboy.GetLCDC() & 0x80))
+				ly_compare.set(Gameboy.GetLY());
+				++Gameboy.GetLY();
+
+				LCDCycles = LCDCycles % CLOCKS_PER_HBLANK;
+				if (Gameboy.GetLY() == 144)
+				{
+					current_mode = VideoMode::VBLANK;
+					Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, false);
+					Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, true);
+					Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), 0, true);
+				}
+				else
+				{
+					Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
+					Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, false);
+					current_mode = VideoMode::ACCESS_OAM;
+				}
+			}
+			break;
+		case VideoMode::VBLANK:
+			if (LCDCycles >= CLOCKS_PER_SCANLINE)
+			{
+				ly_compare.set(Gameboy.GetLY());
+				++Gameboy.GetLY();
+
+				LCDCycles = LCDCycles % CLOCKS_PER_SCANLINE;
+				if (Gameboy.GetLY() == 154)
+				{
+					WriteSprites();
+
+					//DRAW
+					vblank_callback(buffer);
+
+					buffer.reset();
+					Gameboy.GetLY() = 0;
+					current_mode = VideoMode::ACCESS_OAM;
+					Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
+					Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, false);
+				}
+			}
+			break;
+		default:
+			break;
+		}
+	else
 	{
-		if ((LCDCycles += cycles) >= cyclesOneDraw) 
-		{ //LCD enabled and we're at our cycle mark
-			LCDCycles = 0;
-			uint8_t dirtyLY;
-			if ((dirtyLY = ++Gameboy.GetLY()) == 144)
-				Gameboy.RequestInterrupt(vBlank);
-			if (Gameboy.GetLY() > 153)
-				Gameboy.GetLY() = 0;
-			if (dirtyLY < 144 && draw)
-				DrawLine();
+		const unsigned cyclesOneDraw{ 456 };
+		ConfigureLCDStatus(); //This is why we can't "speed this up" in the traditional sense, games are sensitive to this
+		if (Gameboy.GetLY() > 153)
+			Gameboy.GetLY() = 0;
+		if ((Gameboy.GetLCDC() & 0x80))
+		{
+			if ((LCDCycles += cycles) >= cyclesOneDraw)
+			{ //LCD enabled and we're at our cycle mark
+				LCDCycles = 0;
+				uint8_t dirtyLY;
+				if ((dirtyLY = ++Gameboy.GetLY()) == 144)
+					Gameboy.RequestInterrupt(vBlank);
+				if (Gameboy.GetLY() > 153)
+					Gameboy.GetLY() = 0;
+				if (dirtyLY < 144 && draw)
+				{
+					DrawLine();
+					vblank_callback(buffer);
+				}
+			}
 		}
 	}
 }
@@ -2062,9 +2094,322 @@ uint16_t LR35902::mmu_read(uint16_t addr)
 	return ret;
 }
 
+void LR35902::register_vblank_callback(const vblank_callback_t& _vblank_callback)
+{
+	vblank_callback = _vblank_callback;
+}
+
 void LR35902::ResetFrameBuffer()
 {
 	Gameboy.GetFramebuffer().reset();
+}
+
+void LR35902::WriteScanline(uint8_t currentLine)
+{
+	if (!DisplayEnabled())
+		return;
+
+	if (BgEnabled())
+		DrawBackgroundLine(currentLine);
+
+	if (WindowEnabled())
+		DrawWindowLine(currentLine);
+}
+
+void LR35902::WriteSprites()
+{
+	if (!SpritesEnabled())
+		return;
+
+	for (unsigned int spriteN{}; spriteN < 40; ++spriteN)
+		DrawSprite(spriteN);
+}
+
+void LR35902::Draw()
+{
+}
+
+void LR35902::DrawBackgroundLine(unsigned int currentLine)
+{
+	bool UseTileSetZero = BgWindowTileData();
+	bool useTileMapZero = !BgTileMapDisplay();
+
+	bg_palette.set(Gameboy.ReadMemory(0xFF47));
+	Palette palette = LoadPalette(bg_palette);
+
+	Address tile_set_address = UseTileSetZero
+		? TILE_SET_ZERO_ADDRESS
+		: TILE_SET_ONE_ADDRESS;
+
+	Address tile_map_address = useTileMapZero
+		? TILE_MAP_ZERO_ADDRESS
+		: TILE_MAP_ONE_ADDRESS;
+
+	/* The pixel row we're drawing on the screen is constant since we're only
+	 * drawing a single line */
+	unsigned int screen_y = currentLine;
+
+	for (unsigned int screen_x = 0; screen_x < GAMEBOY_WIDTH; screen_x++)
+	{
+		/* Work out the position of the pixel in the framebuffer */
+		unsigned int scrolled_x = screen_x + scroll_x.value();
+		unsigned int scrolled_y = screen_y + scroll_y.value();
+
+		/* Work out the index of the pixel in the full background map */
+		unsigned int bg_map_x = scrolled_x % BG_MAP_SIZE;
+		unsigned int by_map_y = scrolled_y % BG_MAP_SIZE;
+
+		/* Work out which tile of the bg_map this pixel is in, and the index of that tile
+		 * in the array of all tiles */
+		unsigned int tile_x = bg_map_x / TILE_WIDTH_PX;
+		unsigned int tile_y = by_map_y / TILE_HEIGHT_PX;
+
+		/* Work out which specific (x,y) inside that tile we're going to render */
+		unsigned int tile_pixel_x = bg_map_x % TILE_WIDTH_PX;
+		unsigned int tile_pixel_y = by_map_y % TILE_HEIGHT_PX;
+
+		/* Work out the address of the tile ID from the tile map */
+		unsigned int tile_index = tile_y * TILES_PER_LINE + tile_x;
+		Address tile_id_address = tile_map_address + tile_index;
+
+		/* Grab the ID of the tile we'll get data from in the tile map */
+		u8 tile_id = Gameboy.ReadMemory(tile_id_address.value());
+
+		/* Calculate the offset from the start of the tile data memory where
+		 * the data for our tile lives */
+		unsigned int tile_data_mem_offset = UseTileSetZero
+			? tile_id * TILE_BYTES
+			: (static_cast<s8>(tile_id) + 128) * TILE_BYTES;
+
+		/* Calculate the extra offset to the data for the line of pixels we
+		 * are rendering from.
+		 * 2 (bytes per line of pixels) * y (lines) */
+		unsigned int tile_data_line_offset = tile_pixel_y * 2;
+
+		Address tile_line_data_start_address = tile_set_address + tile_data_mem_offset + tile_data_line_offset;
+
+		/* FIXME: We fetch the full line of pixels for each pixel in the tile
+		 * we render. This could be altered to work in a way that avoids re-fetching
+		 * for a more performant renderer */
+		u8 pixels_1 = Gameboy.ReadMemory(tile_line_data_start_address.value());
+		u8 pixels_2 = Gameboy.ReadMemory(tile_line_data_start_address.value() + 1);
+
+		GBColor pixel_color = GetPixelFromLine(pixels_1, pixels_2, tile_pixel_x);
+		Color screen_color = GetColorFromPalette(pixel_color, palette);
+
+		buffer.set_pixel(screen_x, screen_y, screen_color);
+	}
+}
+
+void LR35902::DrawWindowLine(unsigned int currentLine)
+{
+	/* Note: tileset two uses signed numbering to share half the tiles with tileset 1 */
+	bool use_tile_set_zero = BgWindowTileData();
+	bool use_tile_map_zero = !WindowTileMap();
+
+	bg_palette.set(Gameboy.ReadMemory(0xFF47));
+	Palette palette = LoadPalette(bg_palette);
+
+	Address tile_set_address = use_tile_set_zero
+		? TILE_SET_ZERO_ADDRESS
+		: TILE_SET_ONE_ADDRESS;
+
+	Address tile_map_address = use_tile_map_zero
+		? TILE_MAP_ZERO_ADDRESS
+		: TILE_MAP_ONE_ADDRESS;
+
+	unsigned int screen_y = currentLine;
+	unsigned int scrolled_y = screen_y - window_y.value();
+
+	if (scrolled_y >= GAMEBOY_HEIGHT) { return; }
+	// if (!is_on_screen_y(scrolled_y)) { return; }
+
+	for (unsigned int screen_x = 0; screen_x < GAMEBOY_WIDTH; screen_x++)
+	{
+		/* Work out the position of the pixel in the framebuffer */
+		unsigned int scrolled_x = screen_x + window_x.value() - 7;
+
+		/* Work out which tile of the bg_map this pixel is in, and the index of that tile
+		 * in the array of all tiles */
+		unsigned int tile_x = scrolled_x / TILE_WIDTH_PX;
+		unsigned int tile_y = scrolled_y / TILE_HEIGHT_PX;
+
+		/* Work out which specific (x,y) inside that tile we're going to render */
+		unsigned int tile_pixel_x = scrolled_x % TILE_WIDTH_PX;
+		unsigned int tile_pixel_y = scrolled_y % TILE_HEIGHT_PX;
+
+		/* Work out the address of the tile ID from the tile map */
+		unsigned int tile_index = tile_y * TILES_PER_LINE + tile_x;
+		Address tile_id_address = tile_map_address + tile_index;
+
+		/* Grab the ID of the tile we'll get data from in the tile map */
+		u8 tile_id = Gameboy.ReadMemory(tile_id_address.value());
+
+		/* Calculate the offset from the start of the tile data memory where
+		 * the data for our tile lives */
+		unsigned int tile_data_mem_offset = use_tile_set_zero
+			? tile_id * TILE_BYTES
+			: (static_cast<s8>(tile_id) + 128) * TILE_BYTES;
+
+		/* Calculate the extra offset to the data for the line of pixels we
+		 * are rendering from.
+		 * 2 (bytes per line of pixels) * y (lines) */
+		unsigned int tile_data_line_offset = tile_pixel_y * 2;
+
+		Address tile_line_data_start_address = tile_set_address + tile_data_mem_offset + tile_data_line_offset;
+
+		/* FIXME: We fetch the full line of pixels for each pixel in the tile
+		 * we render. This could be altered to work in a way that avoids re-fetching
+		 * for a more performant renderer */
+		u8 pixels_1 = Gameboy.ReadMemory(tile_line_data_start_address.value());
+		u8 pixels_2 = Gameboy.ReadMemory(tile_line_data_start_address.value() + 1);
+
+		GBColor pixel_color = GetPixelFromLine(pixels_1, pixels_2, tile_pixel_x);
+		Color screen_color = GetColorFromPalette(pixel_color, palette);
+
+		buffer.set_pixel(screen_x, screen_y, screen_color);
+	}
+}
+
+void LR35902::DrawSprite(unsigned int spriteN)
+{
+	using bitwise::check_bit;
+
+	/* Each sprite is represented by 4 bytes, or 8 bytes in 8x16 mode */
+	Address offset_in_oam = spriteN * SPRITE_BYTES;
+
+	Address oam_start = 0xFE00 + offset_in_oam.value();
+	u8 sprite_y = Gameboy.ReadMemory(oam_start.value());
+	u8 sprite_x = Gameboy.ReadMemory(oam_start.value() + 1);
+
+	/* If the sprite would be drawn offscreen, don't draw it */
+	if (sprite_y == 0 || sprite_y >= 160) { return; }
+	if (sprite_x == 0 || sprite_x >= 168) { return; }
+
+	unsigned int sprite_size_multiplier = SpriteSize()
+		? 2 : 1;
+
+	/* Sprites are always taken from the first tileset */
+	Address tile_set_location = TILE_SET_ZERO_ADDRESS;
+
+	u8 pattern_n = Gameboy.ReadMemory(oam_start.value() + 2);
+	u8 sprite_attrs = Gameboy.ReadMemory(oam_start.value() + 3);
+
+	/* Bits 0-3 are used only for CGB */
+	bool use_palette_1 = check_bit(sprite_attrs, 4);
+	bool flip_x = check_bit(sprite_attrs, 5);
+	bool flip_y = check_bit(sprite_attrs, 6);
+	bool obj_behind_bg = check_bit(sprite_attrs, 7);
+
+	sprite_palette_0.set(Gameboy.ReadMemory(0xFF49));
+	sprite_palette_1.set(Gameboy.ReadMemory(0xff48));
+
+	Palette palette = use_palette_1
+		? LoadPalette(sprite_palette_1)
+		: LoadPalette(sprite_palette_0);
+
+	unsigned int tile_offset = pattern_n * TILE_BYTES;
+
+	Address pattern_address = tile_set_location + tile_offset;
+
+	Tile tile(pattern_address, Gameboy, sprite_size_multiplier);
+	int start_y = sprite_y - 16;
+	int start_x = sprite_x - 8;
+
+	for (unsigned int y = 0; y < TILE_HEIGHT_PX * sprite_size_multiplier; y++)
+	{
+		for (unsigned int x = 0; x < TILE_WIDTH_PX; x++)
+		{
+			unsigned int maybe_flipped_y = !flip_y ? y : (TILE_HEIGHT_PX * sprite_size_multiplier) - y - 1;
+			unsigned int maybe_flipped_x = !flip_x ? x : TILE_WIDTH_PX - x - 1;
+
+			GBColor gb_color = tile.get_pixel(maybe_flipped_x, maybe_flipped_y);
+
+			// Color 0 is transparent
+			if (gb_color == GBColor::Color0) { continue; }
+
+			int screen_x = start_x + x;
+			int screen_y = start_y + y;
+
+			if (!IsOnScreen(screen_x, screen_y)) { continue; }
+
+			auto existing_pixel = buffer.get_pixel(screen_x, screen_y);
+
+			// FIXME: We need to see if the color we're writing over is
+			// logically Color0, rather than looking at the color after
+			// the current palette has been applied
+			if (obj_behind_bg && existing_pixel != Color::White) { continue; }
+
+			Color screen_color = GetColorFromPalette(gb_color, palette);
+
+			buffer.set_pixel(screen_x, screen_y, screen_color);
+		}
+	}
+}
+
+GBColor LR35902::GetPixelFromLine(uint8_t byte1, uint8_t byte2, uint8_t pixelIndex)
+{
+	u8 color_u8 = static_cast<u8>((bitwise::bit_value(byte2, 7 - pixelIndex) << 1) | bitwise::bit_value(byte1, 7 - pixelIndex));
+	return GetColor(color_u8);
+}
+
+bool LR35902::IsOnScreenX(uint8_t x) { return x < GAMEBOY_WIDTH; }
+bool LR35902::IsOnScreenY(uint8_t y) { return y < GAMEBOY_HEIGHT; }
+bool LR35902::IsOnScreen(uint8_t x, uint8_t y) { return IsOnScreenX(x) && IsOnScreenY(y); }
+
+bool LR35902::DisplayEnabled() const { return bitwise::check_bit(control_byte, 7); }
+bool LR35902::WindowTileMap() const { return bitwise::check_bit(control_byte, 6); }
+bool LR35902::WindowEnabled() const { return bitwise::check_bit(control_byte, 5); }
+bool LR35902::BgWindowTileData() const { return bitwise::check_bit(control_byte, 4); }
+bool LR35902::BgTileMapDisplay() const { return bitwise::check_bit(control_byte, 3); }
+bool LR35902::SpriteSize() const { return bitwise::check_bit(control_byte, 2); }
+bool LR35902::SpritesEnabled() const { return bitwise::check_bit(control_byte, 1); }
+bool LR35902::BgEnabled() const { return bitwise::check_bit(control_byte, 0); }
+
+TileInfo LR35902::GetTileInfo(Address titleSetLocation, uint8_t titleId, uint8_t titleLine) const
+{
+	return TileInfo();
+}
+
+Color LR35902::GetRealColor(uint8_t pixelValue)
+{
+	switch (pixelValue)
+	{
+	case 0: return Color::White;
+	case 1: return Color::LightGray;
+	case 2: return Color::DarkGray;
+	case 3: return Color::Black;
+	}
+
+	return Color{};
+}
+
+Palette LR35902::LoadPalette(ByteRegister& palette_register)
+{
+	/* TODO: Reduce duplication */
+	u8 color0 = bitwise::compose_bits(bitwise::bit_value(palette_register.value(), 1), bitwise::bit_value(palette_register.value(), 0));
+	u8 color1 = bitwise::compose_bits(bitwise::bit_value(palette_register.value(), 3), bitwise::bit_value(palette_register.value(), 2));
+	u8 color2 = bitwise::compose_bits(bitwise::bit_value(palette_register.value(), 5), bitwise::bit_value(palette_register.value(), 4));
+	u8 color3 = bitwise::compose_bits(bitwise::bit_value(palette_register.value(), 7), bitwise::bit_value(palette_register.value(), 6));
+
+	Color real_color_0 = GetRealColor(color0);
+	Color real_color_1 = GetRealColor(color1);
+	Color real_color_2 = GetRealColor(color2);
+	Color real_color_3 = GetRealColor(color3);
+
+	return { real_color_0, real_color_1, real_color_2, real_color_3 };
+}
+
+Color LR35902::GetColorFromPalette(GBColor color, const Palette& palette)
+{
+	switch (color)
+	{
+	case GBColor::Color0: return palette.color0;
+	case GBColor::Color1: return palette.color1;
+	case GBColor::Color2: return palette.color2;
+	case GBColor::Color3: return palette.color3;
+	}
+	return Color{};
 }
 
 void LR35902::mmu_write(uint16_t addr, uint8_t val)

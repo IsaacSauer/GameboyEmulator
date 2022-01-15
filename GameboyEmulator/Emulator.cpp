@@ -20,21 +20,25 @@ gbee::Emulator::~Emulator()
 
 void gbee::Emulator::LoadGame(const std::string& gbFile) const
 {
-	for (uint8_t i{ 0 }; i < InstanceCount; ++i)
-	{
-		Instances[i].LoadGame(gbFile);
-		//Instances[i].SetRunningVariable(true);
-	}
+	Instances[0].LoadGame(gbFile);
+	//Instances[i].SetRunningVariable(true);
 }
 
-void gbee::Emulator::Start() const
+void gbee::Emulator::Start()
 {
-	for (long i{ 0 }; i < InstanceCount; ++i)
-	{
-		Instances[i].SetRunningVariable(true);
-		std::thread t = std::thread{ &GameBoy::Update, std::ref(Instances[i]) };
-		t.detach(); //We don't need to sync them, ever..
-	}
+	Instances[0].SetRunningVariable(true);
+	thread = std::thread{ &GameBoy::Update, std::ref(Instances[0]) };
+	//thread.detach(); //We don't need to sync them, ever..
+}
+
+void gbee::Emulator::Stop()
+{
+	Instances[0].SetRunningVariable(false);
+}
+
+void gbee::Emulator::AssignDrawCallback(const std::function<void(const FrameBuffer&)>&& _vblank_callback)
+{
+	Instances[0].AssignDrawCallback(_vblank_callback);
 }
 
 void gbee::Emulator::Reset()
@@ -86,6 +90,11 @@ uint16_t gbee::Emulator::GetSpeed(const uint8_t instanceID) const
 void gbee::Emulator::SetAutoSpeed(const bool onOff, const uint8_t instanceID) const
 {
 	Instances[instanceID].SetAutoSpeed(onOff);
+}
+
+void gbee::Emulator::Join()
+{
+	thread.join();
 }
 
 void gbee::Emulator::RunForCycles(const unsigned short cycles, const uint8_t instanceID) const

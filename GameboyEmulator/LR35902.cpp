@@ -319,11 +319,14 @@ bool LR35902::HandleInterrupt(u8 interrupt_bit, u16 interrupt_vector, u8 fired_i
 	InteruptsEnabled = false;
 	return true;
 }
+
 void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, const bool draw) noexcept
 {
 	LCDCycles += cycles;
 
-	if (true)
+	//NEW LCD SYSTEM / NEW WRITE
+	if (false)
+	{
 		switch (current_mode)
 		{
 		case VideoMode::ACCESS_OAM:
@@ -366,7 +369,7 @@ void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, 
 					current_mode = VideoMode::VBLANK;
 					Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, false);
 					Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, true);
-					Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), 0, true);
+					Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), vBlank, true);
 				}
 				else
 				{
@@ -401,7 +404,9 @@ void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, 
 		default:
 			break;
 		}
-	else
+	}
+	//OLD WRITE
+	else if (false)
 	{
 		const unsigned cyclesOneDraw{ 456 };
 		ConfigureLCDStatus(); //This is why we can't "speed this up" in the traditional sense, games are sensitive to this
@@ -420,6 +425,34 @@ void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, 
 				if (dirtyLY < 144 && draw)
 				{
 					DrawLine();
+					vblank_callback(buffer);
+				}
+			}
+		}
+	}
+	//OLD LCD SYSTEM / NEW WRITE
+	else
+	{
+		const unsigned cyclesOneDraw{ 456 };
+		ConfigureLCDStatus(); //This is why we can't "speed this up" in the traditional sense, games are sensitive to this
+		if (Gameboy.GetLY() > 153)
+			Gameboy.GetLY() = 0;
+		if ((Gameboy.GetLCDC() & 0x80))
+		{
+			if ((LCDCycles += cycles) >= cyclesOneDraw)
+			{ //LCD enabled and we're at our cycle mark
+				LCDCycles = 0;
+				uint8_t dirtyLY;
+				if ((dirtyLY = ++Gameboy.GetLY()) == 144)
+					Gameboy.RequestInterrupt(vBlank);
+				if (Gameboy.GetLY() > 153)
+					Gameboy.GetLY() = 0;
+				if (dirtyLY < 144 && draw)
+				{
+					//DrawLine();
+					WriteScanline(Gameboy.GetLY());
+					WriteSprites();
+
 					vblank_callback(buffer);
 				}
 			}
@@ -2121,6 +2154,7 @@ void LR35902::WriteSprites()
 	if (!SpritesEnabled())
 		return;
 
+#pragma loop(hint_parallel(20))
 	for (unsigned int spriteN{}; spriteN < 40; ++spriteN)
 		DrawSprite(spriteN);
 }
@@ -2149,6 +2183,7 @@ void LR35902::DrawBackgroundLine(unsigned int currentLine)
 	 * drawing a single line */
 	unsigned int screen_y = currentLine;
 
+#pragma loop(hint_parallel(10))
 	for (unsigned int screen_x = 0; screen_x < GAMEBOY_WIDTH; screen_x++)
 	{
 		/* Work out the position of the pixel in the framebuffer */
@@ -2224,6 +2259,7 @@ void LR35902::DrawWindowLine(unsigned int currentLine)
 	if (scrolled_y >= GAMEBOY_HEIGHT) { return; }
 	// if (!is_on_screen_y(scrolled_y)) { return; }
 
+#pragma loop(hint_parallel(20))
 	for (unsigned int screen_x = 0; screen_x < GAMEBOY_WIDTH; screen_x++)
 	{
 		/* Work out the position of the pixel in the framebuffer */
@@ -2301,8 +2337,8 @@ void LR35902::DrawSprite(unsigned int spriteN)
 	bool flip_y = check_bit(sprite_attrs, 6);
 	bool obj_behind_bg = check_bit(sprite_attrs, 7);
 
-	sprite_palette_0.set(Gameboy.ReadMemory(0xFF49));
-	sprite_palette_1.set(Gameboy.ReadMemory(0xff48));
+	sprite_palette_0.set(Gameboy.ReadMemory(0xFF48));
+	sprite_palette_1.set(Gameboy.ReadMemory(0xff49));
 
 	Palette palette = use_palette_1
 		? LoadPalette(sprite_palette_1)

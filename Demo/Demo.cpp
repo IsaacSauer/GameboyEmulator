@@ -25,8 +25,6 @@ std::condition_variable cv;
 
 std::vector<uint16_t> frameBuffer{};
 
-bool running = false;
-
 void SetKeyState(const SDL_Event& event)
 {
 	//Just ini 0
@@ -107,30 +105,27 @@ void CraftPixelBuffer(const std::vector<uint16_t>& frameBuffer, uint16_t* buffer
 
 void VBlankCallback(const FrameBuffer& buffer)
 {
-	if (running && rendr)
+	if ( rendr)
 	{
 		//lock
-		std::lock_guard<std::mutex> guard(m);
+		//std::lock_guard<std::mutex> guard(m);
 
 		//MAKE BUFFER
 		frameBuffer = buffer.GetBuffer();
 
 		//unlock
-		cv.notify_one();
+		//cv.notify_one();
 	}
-
-	if (!running)
-		cv.notify_one();
 }
 
 void Update()
 {
 	const float fps{ 59.73f };
 
-	while (SDLEventPump() && running)
+	while (SDLEventPump() )
 	{
 		//lock
-		std::unique_lock<std::mutex> guard(m);
+		//std::unique_lock<std::mutex> guard(m);
 
 		//DRAWING
 		if (true)
@@ -142,7 +137,7 @@ void Update()
 			SDL_UpdateTexture(textures[0], nullptr, static_cast<void*>(pixelBuffer), 160 * sizeof(uint16_t));
 		}
 
-		guard.unlock();
+		//guard.unlock();
 
 		SDL_RenderClear(rendr);
 		SDL_Rect texture_rect;
@@ -153,13 +148,12 @@ void Update()
 		SDL_RenderCopy(rendr, textures[0], NULL, &texture_rect);
 		SDL_RenderPresent(rendr);
 
-		guard.lock();
+		//guard.lock();
 
-		cv.wait(guard);
+		//cv.wait(guard);
 	}
 
 	emu->Stop();
-	running = false;
 	ImGuiSDL::Deinitialize();
 
 	SDL_DestroyRenderer(rendr);
@@ -189,7 +183,6 @@ int main(int argc, char* argv[])
 		emu = &emum;
 		emum.AssignDrawCallback(VBlankCallback);
 		emum.LoadGame(path);
-		running = true;
 		emum.Start();
 
 		std::string base_filename = path.substr(path.find_last_of("/\\") + 1);

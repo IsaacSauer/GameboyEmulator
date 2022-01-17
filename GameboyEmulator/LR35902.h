@@ -695,10 +695,10 @@ private:
 	uint8_t ExecuteOpcode();
 	uint8_t ExecuteOpcodeCB();
 	void ConfigureLCDStatus();
-	void DrawLine() const;
+	void DrawLine();
 	void DrawBackground() const;
 	void DrawWindow() const;
-	void DrawSprites() const;
+	void DrawSprites() ;
 	uint8_t ReadPalette(const uint16_t pixelData, const uint8_t xPixel, const uint8_t yPixel) const;
 	void ConfigureColorArray(uint8_t* const colorArray, uint8_t palette) const;
 

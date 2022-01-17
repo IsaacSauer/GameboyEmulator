@@ -14,6 +14,7 @@
 #include "opc_test/disassembler.h"
 #include "bitwise.h"
 #include "Register.h"
+#include "Tile.h"
 
 static int cycles_per_instruction[] = {
 	/* 0   1   2   3   4   5   6   7   8   9   a   b   c   d   e   f       */
@@ -450,9 +451,9 @@ void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, 
 				if (dirtyLY < 144 && draw)
 				{
 					//DrawLine();
-					WriteScanline(Gameboy.GetLY());
+					WriteScanline(dirtyLY);
 					WriteSprites();
-
+					//DrawSprites();
 					vblank_callback(buffer);
 				}
 			}
@@ -1881,7 +1882,7 @@ void LR35902::ConfigureLCDStatus()
 		Gameboy.GetLCDS() &= ~(static_cast<unsigned>(1) << 2);
 }
 
-void LR35902::DrawLine() const
+void LR35902::DrawLine()
 {
 	DrawBackground();
 	DrawWindow(); //window == ui
@@ -1968,12 +1969,11 @@ void LR35902::DrawWindow() const
 	}
 }
 
-void LR35902::DrawSprites() const
+void LR35902::DrawSprites()
 {
 	if (Gameboy.GetLCDC() & 2)
 	{
 		//todo: support 8x16
-#pragma loop(hint_parallel(20))
 		for (uint16_t oamAddress{ 0xFE9C }; oamAddress >= 0xFE00; oamAddress -= 4)
 		{
 			const uint8_t yCoord{ static_cast<uint8_t>(Gameboy.ReadMemory(oamAddress) - 0x10) };
@@ -2154,7 +2154,7 @@ void LR35902::WriteSprites()
 	if (!SpritesEnabled())
 		return;
 
-#pragma loop(hint_parallel(20))
+#pragma loop( hint_parallel( 0 ) )
 	for (unsigned int spriteN{}; spriteN < 40; ++spriteN)
 		DrawSprite(spriteN);
 }
@@ -2171,6 +2171,8 @@ void LR35902::DrawBackgroundLine(unsigned int currentLine)
 	bg_palette.set(Gameboy.ReadMemory(0xFF47));
 	Palette palette = LoadPalette(bg_palette);
 
+	scroll_x.set(Gameboy.ReadMemory(0xFF43));
+
 	Address tile_set_address = UseTileSetZero
 		? TILE_SET_ZERO_ADDRESS
 		: TILE_SET_ONE_ADDRESS;
@@ -2183,7 +2185,7 @@ void LR35902::DrawBackgroundLine(unsigned int currentLine)
 	 * drawing a single line */
 	unsigned int screen_y = currentLine;
 
-#pragma loop(hint_parallel(10))
+#pragma loop(hint_parallel(20))
 	for (unsigned int screen_x = 0; screen_x < GAMEBOY_WIDTH; screen_x++)
 	{
 		/* Work out the position of the pixel in the framebuffer */
@@ -2244,6 +2246,9 @@ void LR35902::DrawWindowLine(unsigned int currentLine)
 
 	bg_palette.set(Gameboy.ReadMemory(0xFF47));
 	Palette palette = LoadPalette(bg_palette);
+
+	window_x.set(Gameboy.ReadMemory(0xFF4B));
+	window_y.set(Gameboy.ReadMemory(0xFF4A));
 
 	Address tile_set_address = use_tile_set_zero
 		? TILE_SET_ZERO_ADDRESS

@@ -14,7 +14,7 @@ void ByteRegister::reset() {
     val = 0;
 }
 
-auto ByteRegister::value() const -> uint8_t { return val; }
+inline auto ByteRegister::value() const -> uint8_t { return val; }
 
 auto ByteRegister::check_bit(uint8_t bit) const -> bool { return bitwise::check_bit(val, bit); }
 
@@ -41,7 +41,7 @@ ByteRegister& ByteRegister::operator|=(uint8_t rhs)
 void WordRegister::set(const uint16_t new_value) {
     val = new_value;
 }
-auto WordRegister::value() const -> uint16_t { return val; }
+inline auto WordRegister::value() const -> uint16_t { return val; }
 
 auto WordRegister::low() const -> uint8_t { return static_cast<uint8_t>(val); }
 
@@ -72,7 +72,7 @@ auto RegisterPair::low() const -> uint8_t { return low_byte.value(); }
 
 auto RegisterPair::high() const -> uint8_t { return high_byte.value(); }
 
-auto RegisterPair::value() const -> uint16_t {
+inline auto RegisterPair::value() const -> uint16_t {
     return bitwise::compose_bytes(high_byte.value(), low_byte.value());
 }
 
@@ -134,7 +134,7 @@ Address::Address(const RegisterPair& from) : addr(from.value()) {
 Address::Address(const WordRegister& from) : addr(from.value()) {
 }
 
-auto Address::value() const -> uint16_t { return addr; }
+inline auto Address::value() const -> uint16_t { return addr; }
 
 auto Address::in_range(Address low, Address high) const -> bool {
     return low.value() <= value() && value() <= high.value();

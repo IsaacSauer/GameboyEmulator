@@ -145,7 +145,7 @@ public:
 	 */
 	void HandleInterupts();
 	bool HandleInterrupt(u8 interrupt_bit, u16 interrupt_vector, u8 fired_interrupts);
-	void HandleGraphics(const unsigned cycles, const unsigned cycleBudget, const bool draw) noexcept;
+	void HandleGraphics(const unsigned cycles, const unsigned cycleBudget = 0, const bool draw = true) noexcept;
 
 	bool GetHalted() { return Halted; }
 private:

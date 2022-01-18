@@ -447,14 +447,17 @@ void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, 
 				if ((dirtyLY = ++Gameboy.GetLY()) == 144)
 					Gameboy.RequestInterrupt(vBlank);
 				if (Gameboy.GetLY() > 153)
+				{
 					Gameboy.GetLY() = 0;
+					vblank_callback(buffer);
+					//buffer.reset();
+				}
 				if (dirtyLY < 144 && draw)
 				{
 					//DrawLine();
 					WriteScanline(dirtyLY);
 					WriteSprites();
 					//DrawSprites();
-					vblank_callback(buffer);
 				}
 			}
 		}
@@ -2154,7 +2157,7 @@ void LR35902::WriteSprites()
 	if (!SpritesEnabled())
 		return;
 
-#pragma loop( hint_parallel( 0 ) )
+#pragma loop( hint_parallel( 40 ) )
 	for (unsigned int spriteN{}; spriteN < 40; ++spriteN)
 		DrawSprite(spriteN);
 }

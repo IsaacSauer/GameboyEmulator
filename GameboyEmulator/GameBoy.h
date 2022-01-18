@@ -252,4 +252,7 @@ private:
 
 	void MBC3Write(const uint16_t& address, const uint8_t byte);
 	uint8_t MBC3Read(const uint16_t& address);
+
+	void MBCWriteOptimal(const uint16_t& address, const uint8_t byte);
+	uint8_t MBCReadOptimal(const uint16_t& address);
 };

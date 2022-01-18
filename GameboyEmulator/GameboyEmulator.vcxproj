@@ -184,6 +184,7 @@
     <ClInclude Include="LR35902.h" />
     <ClInclude Include="Emulator.h" />
     <ClInclude Include="GameBoy.h" />
+    <ClInclude Include="Measure.h" />
     <ClInclude Include="opc_test\common.h" />
     <ClInclude Include="opc_test\disassembler.h" />
     <ClInclude Include="opc_test\inputstate.h" />

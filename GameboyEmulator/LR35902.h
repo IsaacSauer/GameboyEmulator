@@ -118,10 +118,10 @@ enum class VideoMode
 	HBLANK,
 	VBLANK,
 };
-const unsigned int GAMEBOY_WIDTH = 160;
-const unsigned int GAMEBOY_HEIGHT = 144;
-const unsigned int BG_MAP_SIZE = 256;
-const int CLOCK_RATE = 4194304;
+static const unsigned int GAMEBOY_WIDTH = 160;
+static const unsigned int GAMEBOY_HEIGHT = 144;
+static const unsigned int BG_MAP_SIZE = 256;
+static const int CLOCK_RATE = 4194304;
 
 class LR35902 final
 {

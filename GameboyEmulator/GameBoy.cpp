@@ -19,12 +19,12 @@ void GameBoy::LoadGame(const std::string& gbFile)
 {
 	fileName = gbFile;
 
-	std::ifstream file{ gbFile, std::ios::binary };
+	std::ifstream file{ fileName, std::ios::binary };
 	assert(file.good());
 
 	file.seekg(0, std::ios::end);
 	const std::ifstream::pos_type size{ file.tellg() };
-	std::cout << "rom size: " << size << std::endl;
+	//std::cout << "rom size: " << size << std::endl;
 	Rom.resize(size, 0);
 
 	file.seekg(0, std::ios::beg);

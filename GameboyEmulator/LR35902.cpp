@@ -319,17 +319,13 @@ void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, 
 			}
 			if (dirtyLY < 144 && draw)
 			{
-				WriteScanline(dirtyLY);
+				WriteScanline(Gameboy.GetLY());
 				WriteSprites();
 			}
 		}
 	}
 }
 
-//Yes, I know, visibility/debugging will suffer...
-//Tho, once the macro has been proven to work, it works...
-//Also, due to MSVC no longer ignoring trailing commas(VS2019) and refusing to parse ## or the _opt_ semantic, you have to use 2 commas when using the variadic part.. :/
-//Note: These multi-line macros might be regarded as unsafe but I don't wanna risk branching so ima leave it like this, yes it's likely the compiler will optimize the if statement out but im not gonna risk it..
 #define OPCYCLE(func, cycl) func; cycles = cycl; break
 #define BASICOPS(A1, B1, C1, D1, E1, H1, L1, cycles, funcName, ...) \
 	case A1: OPCYCLE( funcName( Register.reg8.A __VA_ARGS__), cycles ); \
@@ -1770,17 +1766,6 @@ void LR35902::DrawBackground() const
 	ConfigureColorArray(colors, Gameboy.ReadMemory(0xFF47));
 
 	std::bitset<160 * 144 * 2>& fBuffer{ Gameboy.GetFramebuffer() };
-	//TODO: Invesitgate Threading Bottleneck..
-	/*DrawData data{colors, &Gameboy.GetFramebuffer(),tileSetAdress, tileMapOffset, fbOffset,scrollX, tileY, 0}; //DOUBLE DATA!
-
-	DrawDataStruct = &data;
-	//std::cout << "Starting Draw\n";
-	ActivateDrawers.notify_all();
-	std::unique_lock<std::mutex> mtx{ConditionalVariableMutex};
-
-	ActivateDrawers.wait( mtx, [&data](){return (data.doneCounter&0x3FF)==0x3ff;} );
-	//std::cout << "Draw DONE!\n";
-	DrawDataStruct = nullptr;*/
 
 #pragma loop(hint_parallel(10))
 	for (uint8_t x{ 0 }; x < 160; ++x)
@@ -2037,6 +2022,7 @@ void LR35902::DrawBackgroundLine(unsigned int currentLine)
 	Palette palette = LoadPalette(bg_palette);
 
 	scroll_x.set(Gameboy.ReadMemory(0xFF43));
+	scroll_y.set(Gameboy.ReadMemory(0xFF43));
 
 	Address tile_set_address = UseTileSetZero
 		? TILE_SET_ZERO_ADDRESS
@@ -2244,7 +2230,7 @@ void LR35902::DrawSprite(unsigned int spriteN)
 			// FIXME: We need to see if the color we're writing over is
 			// logically Color0, rather than looking at the color after
 			// the current palette has been applied
-			if (obj_behind_bg && existing_pixel != Color::White) { continue; }
+			//if (obj_behind_bg && existing_pixel != Color::White) { continue; }
 
 			Color screen_color = GetColorFromPalette(gb_color, palette);
 

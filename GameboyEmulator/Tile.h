@@ -62,7 +62,6 @@ private:
     static inline auto get_pixel_line(uint8_t byte1, uint8_t byte2)->uint8_t*;
 
 	GBColor buffer[TILE_HEIGHT_PX * 2 * TILE_WIDTH_PX]{};
-    //std::array<GBColor, TILE_HEIGHT_PX * 2 * TILE_WIDTH_PX> buffer;
 };
 
 GBColor GetColor(uint8_t pixel_value);

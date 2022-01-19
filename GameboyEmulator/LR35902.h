@@ -877,12 +877,12 @@ private:
 #pragma endregion
 };
 
-const unsigned int CLOCKS_PER_HBLANK = 204; /* Mode 0 */
-const unsigned int CLOCKS_PER_SCANLINE_OAM = 80; /* Mode 2 */
-const unsigned int CLOCKS_PER_SCANLINE_VRAM = 172; /* Mode 3 */
-const unsigned int CLOCKS_PER_SCANLINE =
-(CLOCKS_PER_SCANLINE_OAM + CLOCKS_PER_SCANLINE_VRAM + CLOCKS_PER_HBLANK);
-
-const unsigned int CLOCKS_PER_VBLANK = 4560; /* Mode 1 */
-const unsigned int SCANLINES_PER_FRAME = 144;
-const unsigned int CLOCKS_PER_FRAME = (CLOCKS_PER_SCANLINE * SCANLINES_PER_FRAME) + CLOCKS_PER_VBLANK;
+//const unsigned int CLOCKS_PER_HBLANK = 204; /* Mode 0 */
+//const unsigned int CLOCKS_PER_SCANLINE_OAM = 80; /* Mode 2 */
+//const unsigned int CLOCKS_PER_SCANLINE_VRAM = 172; /* Mode 3 */
+//const unsigned int CLOCKS_PER_SCANLINE =
+//(CLOCKS_PER_SCANLINE_OAM + CLOCKS_PER_SCANLINE_VRAM + CLOCKS_PER_HBLANK);
+//
+//const unsigned int CLOCKS_PER_VBLANK = 4560; /* Mode 1 */
+//const unsigned int SCANLINES_PER_FRAME = 144;
+//const unsigned int CLOCKS_PER_FRAME = (CLOCKS_PER_SCANLINE * SCANLINES_PER_FRAME) + CLOCKS_PER_VBLANK;

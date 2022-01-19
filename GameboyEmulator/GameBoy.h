@@ -17,7 +17,7 @@ enum Interupts : uint8_t
 	serial = 0x58,
 	joypad = 0x60
 };
-enum Key : uint8_t { right, aButton, left, bButton, up, select, down, start };
+enum Key : uint8_t { right, bButton, left, aButton, up, select, down, start };
 
 struct GameHeader final
 {

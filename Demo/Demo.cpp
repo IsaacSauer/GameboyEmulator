@@ -18,10 +18,6 @@ SDL_Window* wind{};
 SDL_Renderer* rendr{};
 SDL_Texture* textures[INSTANCECOUNT];
 gbee::Emulator* emu{ };
-//gbee::Emulator emu{ "PinballFantasies(USA,Europe).gb", INSTANCECOUNT };
-
-std::mutex m;
-std::condition_variable cv;
 
 std::vector<uint16_t> frameBuffer{};
 
@@ -88,33 +84,12 @@ void CraftPixelBuffer(const uint8_t instance, uint16_t* buffer)
 	}
 }
 
-void CraftPixelBuffer(const std::vector<uint16_t>& frameBuffer, uint16_t* buffer)
-{
-	//auto vector = frameBuffer.GetBuffer();
-	//memcpy((void*)buffer, (void*)vector.data(), vector.size() * sizeof(Color));
-
-	//	//std::bitset<160 * 144 * 2> bitBuffer{ buffer.GetBuffer()};
-	//
-	//#pragma loop(hint_parallel(20))
-	//	for (int i{ 0 }; i < 160 * 144; ++i)
-	//	{
-	//		const uint8_t val{ static_cast<uint8_t>(bitBuffer[i * 2] << 1 | static_cast<uint8_t>(bitBuffer[i * 2 + 1])) };
-	//		buffer[i] = 0xFFFF - val * 0x5555;
-	//	}
-}
-
 void VBlankCallback(const FrameBuffer& buffer)
 {
 	if ( rendr)
 	{
-		//lock
-		//std::lock_guard<std::mutex> guard(m);
-
 		//MAKE BUFFER
 		frameBuffer = buffer.GetBuffer();
-
-		//unlock
-		//cv.notify_one();
 	}
 }
 
@@ -124,9 +99,6 @@ void Update()
 
 	while (SDLEventPump() )
 	{
-		//lock
-		//std::unique_lock<std::mutex> guard(m);
-
 		//DRAWING
 		if (true)
 			SDL_UpdateTexture(textures[0], nullptr, static_cast<void*>(frameBuffer.data()), 160 * sizeof(uint16_t));
@@ -137,8 +109,6 @@ void Update()
 			SDL_UpdateTexture(textures[0], nullptr, static_cast<void*>(pixelBuffer), 160 * sizeof(uint16_t));
 		}
 
-		//guard.unlock();
-
 		SDL_RenderClear(rendr);
 		SDL_Rect texture_rect;
 		texture_rect.x = 0;  //the x coordinate
@@ -147,10 +117,6 @@ void Update()
 		texture_rect.h = 720; //the height of the texture
 		SDL_RenderCopy(rendr, textures[0], NULL, &texture_rect);
 		SDL_RenderPresent(rendr);
-
-		//guard.lock();
-
-		//cv.wait(guard);
 	}
 
 	emu->Stop();

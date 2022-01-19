@@ -25,15 +25,6 @@ GBColor GetColor(uint8_t pixel_value)
 
 Tile::Tile(Address& address, GameBoy& mmu, unsigned int size_multiplier)
 {
-	///* Set the whole framebuffer to be black */
-	//for (unsigned int x = 0; x < TILE_WIDTH_PX; x++)
-	//{
-	//	for (unsigned int y = 0; y < TILE_HEIGHT_PX * size_multiplier; y++)
-	//	{
-	//		buffer[pixel_index(x, y)] = GBColor::Color0;
-	//	}
-	//}
-
 	for (unsigned int tile_line = 0; tile_line < TILE_HEIGHT_PX * size_multiplier; tile_line++)
 	{
 		/* 2 (bytes per line of pixels) * y (lines) */

@@ -2022,7 +2022,7 @@ void LR35902::DrawBackgroundLine(unsigned int currentLine)
 	Palette palette = LoadPalette(bg_palette);
 
 	scroll_x.set(Gameboy.ReadMemory(0xFF43));
-	scroll_y.set(Gameboy.ReadMemory(0xFF43));
+	scroll_y.set(Gameboy.ReadMemory(0xFF42));
 
 	Address tile_set_address = UseTileSetZero
 		? TILE_SET_ZERO_ADDRESS

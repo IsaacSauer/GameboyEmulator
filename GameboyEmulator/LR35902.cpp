@@ -254,31 +254,6 @@ void LR35902::TestCPU()
 
 void LR35902::HandleInterupts()
 {
-	//if (InteruptsEnabled)
-	//{
-	//	u8 fired_interrupts = Gameboy.interrupt_flag.value() & Gameboy.interrupt_enabled.value();
-	//	if (!fired_interrupts)
-	//		return;
-	//	Halted = false;
-	//	PUSH(Register.pc);
-	//	bool handled_interrupt = false;
-	//	handled_interrupt = HandleInterrupt(0, Interupts::vBlank, fired_interrupts);
-	//	if (handled_interrupt)
-	//		return;
-	//	handled_interrupt = HandleInterrupt(1, Interupts::lcdStat, fired_interrupts);
-	//	if (handled_interrupt)
-	//		return;
-	//	handled_interrupt = HandleInterrupt(2, Interupts::timer, fired_interrupts);
-	//	if (handled_interrupt)
-	//		return;
-	//	handled_interrupt = HandleInterrupt(3, Interupts::serial, fired_interrupts);
-	//	if (handled_interrupt)
-	//		return;
-	//	handled_interrupt = HandleInterrupt(4, Interupts::joypad, fired_interrupts);
-	//	if (handled_interrupt)
-	//		return;
-	//}
-
 	uint8_t	ints = static_cast<uint8_t>(Gameboy.GetIF() & Gameboy.GetIE());
 	if (InteruptsEnabled && ints)
 	{
@@ -325,140 +300,27 @@ void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, 
 {
 	LCDCycles += cycles;
 
-	//NEW LCD SYSTEM / NEW WRITE
-	if (false)
+	const unsigned cyclesOneDraw{ 456 };
+	ConfigureLCDStatus(); //This is why we can't "speed this up" in the traditional sense, games are sensitive to this
+	if (Gameboy.GetLY() > 153)
+		Gameboy.GetLY() = 0;
+	if ((Gameboy.GetLCDC() & 0x80))
 	{
-		switch (current_mode)
-		{
-		case VideoMode::ACCESS_OAM:
-			if (LCDCycles >= CLOCKS_PER_SCANLINE_OAM)
+		if ((LCDCycles += cycles) >= cyclesOneDraw)
+		{ //LCD enabled and we're at our cycle mark
+			LCDCycles = 0;
+			uint8_t dirtyLY;
+			if ((dirtyLY = ++Gameboy.GetLY()) == 144)
+				Gameboy.RequestInterrupt(vBlank);
+			if (Gameboy.GetLY() > 153)
 			{
-				LCDCycles = LCDCycles % CLOCKS_PER_SCANLINE_OAM;
-				Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
-				Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, true);
-				current_mode = VideoMode::ACCESS_VRAM;
+				Gameboy.GetLY() = 0;
+				vblank_callback(buffer);
 			}
-			break;
-		case VideoMode::ACCESS_VRAM:
-			if (LCDCycles >= CLOCKS_PER_SCANLINE_VRAM)
+			if (dirtyLY < 144 && draw)
 			{
-				LCDCycles = LCDCycles % CLOCKS_PER_SCANLINE_VRAM;
-				current_mode = VideoMode::HBLANK;
-				bool hblank_interrupt = bitwise::check_bit(Gameboy.GetLCDS(), 3);
-				if (hblank_interrupt)
-					Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), 1, true);
-				bool ly_coincidence_interrupt = bitwise::check_bit(Gameboy.GetLCDS(), 6);
-				bool ly_coincidence = ly_compare.value() == Gameboy.GetLY();
-				if (ly_coincidence_interrupt && ly_coincidence)
-					Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), 1, true);
-				Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 2, ly_coincidence);
-				Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
-				Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, true);
-			}
-			break;
-		case VideoMode::HBLANK:
-			if (LCDCycles >= CLOCKS_PER_HBLANK)
-			{
-				WriteScanline(Gameboy.GetLY());
-
-				ly_compare.set(Gameboy.GetLY());
-				++Gameboy.GetLY();
-
-				LCDCycles = LCDCycles % CLOCKS_PER_HBLANK;
-				if (Gameboy.GetLY() == 144)
-				{
-					current_mode = VideoMode::VBLANK;
-					Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, false);
-					Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, true);
-					Gameboy.GetIF() = bitwise::set_bit_to(Gameboy.GetIF(), vBlank, true);
-				}
-				else
-				{
-					Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
-					Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, false);
-					current_mode = VideoMode::ACCESS_OAM;
-				}
-			}
-			break;
-		case VideoMode::VBLANK:
-			if (LCDCycles >= CLOCKS_PER_SCANLINE)
-			{
-				ly_compare.set(Gameboy.GetLY());
-				++Gameboy.GetLY();
-
-				LCDCycles = LCDCycles % CLOCKS_PER_SCANLINE;
-				if (Gameboy.GetLY() == 154)
-				{
-					WriteSprites();
-
-					//DRAW
-					vblank_callback(buffer);
-
-					buffer.reset();
-					Gameboy.GetLY() = 0;
-					current_mode = VideoMode::ACCESS_OAM;
-					Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 1, true);
-					Gameboy.GetLCDS() = bitwise::set_bit_to(Gameboy.GetLCDS(), 0, false);
-				}
-			}
-			break;
-		default:
-			break;
-		}
-	}
-	//OLD WRITE
-	else if (false)
-	{
-		const unsigned cyclesOneDraw{ 456 };
-		ConfigureLCDStatus(); //This is why we can't "speed this up" in the traditional sense, games are sensitive to this
-		if (Gameboy.GetLY() > 153)
-			Gameboy.GetLY() = 0;
-		if ((Gameboy.GetLCDC() & 0x80))
-		{
-			if ((LCDCycles += cycles) >= cyclesOneDraw)
-			{ //LCD enabled and we're at our cycle mark
-				LCDCycles = 0;
-				uint8_t dirtyLY;
-				if ((dirtyLY = ++Gameboy.GetLY()) == 144)
-					Gameboy.RequestInterrupt(vBlank);
-				if (Gameboy.GetLY() > 153)
-					Gameboy.GetLY() = 0;
-				if (dirtyLY < 144 && draw)
-				{
-					DrawLine();
-					vblank_callback(buffer);
-				}
-			}
-		}
-	}
-	//OLD LCD SYSTEM / NEW WRITE
-	else
-	{
-		const unsigned cyclesOneDraw{ 456 };
-		ConfigureLCDStatus(); //This is why we can't "speed this up" in the traditional sense, games are sensitive to this
-		if (Gameboy.GetLY() > 153)
-			Gameboy.GetLY() = 0;
-		if ((Gameboy.GetLCDC() & 0x80))
-		{
-			if ((LCDCycles += cycles) >= cyclesOneDraw)
-			{ //LCD enabled and we're at our cycle mark
-				LCDCycles = 0;
-				uint8_t dirtyLY;
-				if ((dirtyLY = ++Gameboy.GetLY()) == 144)
-					Gameboy.RequestInterrupt(vBlank);
-				if (Gameboy.GetLY() > 153)
-				{
-					Gameboy.GetLY() = 0;
-					vblank_callback(buffer);
-					//buffer.reset();
-				}
-				if (dirtyLY < 144 && draw)
-				{
-					//DrawLine();
-					WriteScanline(dirtyLY);
-					WriteSprites();
-					//DrawSprites();
-				}
+				WriteScanline(dirtyLY);
+				WriteSprites();
 			}
 		}
 	}

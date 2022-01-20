@@ -196,23 +196,26 @@ Bits 1-0 - Input Clock Select
 	struct
 	{
 		uint8_t romBank = 5;
+		uint8_t ramBank = 0;
 		uint8_t ramOrRomBank = 2;
 		bool isRam = true;
 
 		uint8_t GetRomBank() const noexcept
 		{
+			//return romBank;
 			return isRam ? romBank : ramOrRomBank << 5 | romBank;
 		}
 
 		uint8_t GetRamBank() const noexcept
 		{
-			return isRam ? ramOrRomBank : 0;
+			//return ramBank;
+			return isRam ? ramBank : 0;
 		}
 	} ActiveRomRamBank{};
 	MBCs Mbc{};
 	std::vector<uint8_t> RamBanks{};
 	std::vector<uint8_t> Rom{};
-	bool RamBankEnabled = true;
+	bool RamBankEnabled = false;
 	bool RamOverRtc = true;
 
 	uint8_t JoyPadState{ 0xFF };///< States of all 8 keys\n 1==NOT pressed

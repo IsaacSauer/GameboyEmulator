@@ -24,7 +24,7 @@ void GameBoy::LoadGame(const std::string& gbFile)
 
 	file.seekg(0, std::ios::end);
 	const std::ifstream::pos_type size{ file.tellg() };
-	//std::cout << "rom size: " << size << std::endl;
+	std::cout << "rom size: " << size << std::endl;
 	Rom.resize(size, 0);
 
 	file.seekg(0, std::ios::beg);
@@ -42,6 +42,8 @@ void GameBoy::LoadGame(const std::string& gbFile)
 	std::cout << "title of game: " << header.title << std::endl;
 
 	std::cout << "ram size: " << std::to_string(header.ramSizeValue) << std::endl;
+
+	std::cout << "actual rom size"<< std::to_string(Rom[0x0148]) << std::endl;
 
 	RamBankEnabled = header.ramSizeValue;
 
@@ -504,14 +506,14 @@ void GameBoy::MBC1Write(const uint16_t& address, const uint8_t byte)
 
 	if (InRange(address, 0x2000, 0x3FFF))
 	{
-		if (byte == 0x0) { ActiveRomRamBank.romBank = 0x1; }
+		if (byte == 0x0) { SwitchRomBank(0x1); return; }
 
-		if (byte == 0x20) { ActiveRomRamBank.romBank = 0x21; return; }
-		if (byte == 0x40) { ActiveRomRamBank.romBank = 0x41; return; }
-		if (byte == 0x60) { ActiveRomRamBank.romBank = 0x61; return; }
+		if (byte == 0x20) { SwitchRomBank(0x21); return; }
+		if (byte == 0x40) { SwitchRomBank(0x41); return; }
+		if (byte == 0x60) { SwitchRomBank(0x61); return; }
 
 		uint16_t rom_bank_bits = byte & 0x1F;
-		ActiveRomRamBank.romBank = rom_bank_bits;
+		SwitchRomBank(rom_bank_bits);
 	}
 
 	if (InRange(address, 0x4000, 0x5FFF))
@@ -563,7 +565,10 @@ void GameBoy::MBC3Write(const uint16_t& address, const uint8_t byte)
 		std::cout << "switching ram bank" << std::endl;
 
 		if (byte <= 0x03)
+		{
 			RamOverRtc = true;
+			SwitchRamBank(byte);
+		}
 
 		if (byte >= 0x08 && byte <= 0xC)
 			RamOverRtc = false;
@@ -608,8 +613,6 @@ uint8_t GameBoy::MBC1Read(const uint16_t& address)
 
 uint8_t GameBoy::MBC3Read(const uint16_t& address)
 {
-	//std::cout << "value of ram bank: " << std::to_string(ActiveRomRamBank.GetRamBank()) << std::endl;
-
 	if (InRange(address, 0x0000, 0x3FFF))
 	{
 		std::cout << "reading from rom bank 1" << std::endl;
@@ -700,5 +703,5 @@ void GameBoy::SwitchRomBank(uint8_t bank)
 
 void GameBoy::SwitchRamBank(uint8_t bank)
 {
-
+	ActiveRomRamBank.ramBank = bank;
 }

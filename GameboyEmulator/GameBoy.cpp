@@ -41,29 +41,6 @@ void GameBoy::LoadGame(const std::string& gbFile)
 
 	std::cout << "title of game: " << header.title << std::endl;
 
-	using namespace std::placeholders;
-	switch (Mbc)
-	{
-	case mbc1:
-		MBCWrite = std::bind(&GameBoy::MBC1Write, this, _1, _2);
-		MBCRead = std::bind(&GameBoy::MBC1Read, this, _1);
-		break;
-	case mbc2:
-		break;
-	case mbc3:
-		MBCWrite = std::bind(&GameBoy::MBC3Write, this, _1, _2);
-		MBCRead = std::bind(&GameBoy::MBC3Read, this, _1);
-		break;
-	case mbc4:
-		break;
-	case mbc5:
-		break;
-	case none:
-		MBCWrite = std::bind(&GameBoy::MBCNoneWrite, this, _1, _2);
-		MBCRead = std::bind(&GameBoy::MBCNoneRead, this, _1);
-		break;
-	}
-
 	std::cout << "ram size: " << std::to_string(header.ramSizeValue) << std::endl;
 
 	RamBankEnabled = header.ramSizeValue;
@@ -114,6 +91,7 @@ void GameBoy::Update()
 
 	while (IsRunning)
 	{
+
 		if (true)
 		{
 #pragma region Old
@@ -295,24 +273,12 @@ uint8_t GameBoy::ReadMemory(const uint16_t pos)
 	if (m_TestingOpcodes)
 		return (uint8_t)Cpu.mmu_read(pos);
 
-	if (InRange(pos, 0x0, 0x7FFF)) //RAM Bank x
-		//return MBCRead(pos);
+	if (InRange(pos, 0x0, 0x7FFF) || //ROM bank
+		InRange(pos, 0xA000, 0xBFFF)) //RAM Bank
 		return MBCReadOptimal(pos);
 
-	if (pos <= 0x3FFF) //ROM Bank 0
-		return Rom[pos];
-	if (pos == 0xFF00)
+	if (pos == 0xFF00) //Input
 		return GetJoypadState();
-
-	if (InRange(pos, 0x4000, 0x7FFF)) //ROM Bank x
-		return MBCReadOptimal(pos);
-		//return MBCRead(pos);
-		//return Rom[pos + ((ActiveRomRamBank.GetRomBank() - 1) * 0x4000)];
-
-	if (InRange(pos, 0xA000, 0xBFFF)) //RAM Bank x
-		return MBCReadOptimal(pos);
-		//return MBCRead(pos);
-		//return RamBanks[(ActiveRomRamBank.GetRamBank() * 0x2000) + (pos - 0xA000)];
 
 	return Memory[pos];
 }
@@ -344,14 +310,12 @@ void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 		if (InRange(address, 0x4000, 0x7fff))
 		{
 			MBCWriteOptimal(address, data);
-			//MBCWrite(address, data);
 			return;
 		}
 
 		//External (cartridge) ram
 		if (InRange(address, 0xa000, 0xbfff))
 			MBCWriteOptimal(address, data);
-			//MBCWrite(address, data);
 		return;
 	}
 
@@ -376,7 +340,7 @@ void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 	else if (InRange(address, static_cast<uint16_t>(0xA000), static_cast<uint16_t>(0xBFFF))) //External RAM
 	{
 		if (RamBankEnabled)
-			RamBanks[ActiveRomRamBank.GetRamBank() * 0x2000 + (address - 0xA000)] = data;
+			RamBanks[ActiveRomRamBank.GetRamBank() * 0x8000 + (address - 0xA000)] = data;
 	}
 	else if (InRange(address, static_cast<uint16_t>(0xC000), static_cast<uint16_t>(0xDFFF))) //Internal RAM
 	{
@@ -530,6 +494,7 @@ uint8_t GameBoy::GetJoypadState() const
 
 void GameBoy::MBCNoneWrite(const uint16_t& address, const uint8_t byte)
 {
+	Memory[address] = byte;
 }
 
 void GameBoy::MBC1Write(const uint16_t& address, const uint8_t byte)
@@ -569,41 +534,50 @@ void GameBoy::MBC3Write(const uint16_t& address, const uint8_t byte)
 {
 	if (InRange(address, 0x0000, 0x1FFF))
 	{
+		std::cout << "toggling ram bank enable" << std::endl;
+
 		if (byte == 0x0A)
 			RamBankEnabled = true;
 
-		if (byte == 0x0)
+		if (byte == 0x00)
 			RamBankEnabled = false;
 	}
 
 	if (InRange(address, 0x2000, 0x3FFF))
 	{
-		if (byte == 0x0)
-			ActiveRomRamBank.romBank = 0x1;
+		std::cout << "switching rom bank" << std::endl;
 
-		uint16_t rom_bank_bits = byte & 0x7F;
-		ActiveRomRamBank.romBank = rom_bank_bits;
+		if (byte == 0x0)
+			SwitchRomBank(0x1);
+		else
+		{
+			uint8_t rom_bank_bits = byte & 0x7F;
+			SwitchRomBank(rom_bank_bits);
+
+			std::cout << "rom bank bit: " << std::to_string(rom_bank_bits) << std::endl;
+		}
 	}
 
 	if (InRange(address, 0x4000, 0x5FFF))
 	{
+		std::cout << "switching ram bank" << std::endl;
+
 		if (byte <= 0x03)
-		{
-			m_Ram_Over_Rtc = true;
-			RamBanks[address] = byte;
-		}
+			RamOverRtc = true;
 
 		if (byte >= 0x08 && byte <= 0xC)
-			m_Ram_Over_Rtc = false;
+			RamOverRtc = false;
 	}
 
 	if (InRange(address, 0xA000, 0xBFFF))
 	{
+		std::cout << "writing to RAM" << std::endl;
+
 		if (!RamBankEnabled) { return; }
 
-		if (m_Ram_Over_Rtc)
+		if (RamOverRtc)
 		{
-			auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
+			auto offset_into_ram = 0x8000 * ActiveRomRamBank.GetRamBank();
 			auto address_in_ram = (address - 0xA000) + offset_into_ram;
 			RamBanks[address_in_ram] = byte;
 		}
@@ -634,26 +608,36 @@ uint8_t GameBoy::MBC1Read(const uint16_t& address)
 
 uint8_t GameBoy::MBC3Read(const uint16_t& address)
 {
+	//std::cout << "value of ram bank: " << std::to_string(ActiveRomRamBank.GetRamBank()) << std::endl;
+
 	if (InRange(address, 0x0000, 0x3FFF))
+	{
+		std::cout << "reading from rom bank 1" << std::endl;
 		return Rom[address];
+	}
 
 	if (InRange(address, 0x4000, 0x7FFF))
 	{
-		uint16_t address_into_bank = address - 0x4000;
-		unsigned int bank_offset = 0x4000 * ActiveRomRamBank.GetRamBank();
+		std::cout << "reading from switchable rom bank" << std::endl;
 
-		unsigned int address_in_rom = bank_offset + address_into_bank;
+		const uint16_t address_into_bank = address - 0x4000;
+		const uint16_t bank_offset = 0x4000 * ActiveRomRamBank.GetRomBank();
+		const uint16_t address_in_rom = bank_offset + address_into_bank;
 		return Rom[address_in_rom];
 	}
 
-	if (InRange(address, 0xA000, 0xBFFF))
+	if (InRange(address, 0xA000, 0xBFFF) &&
+		RamOverRtc)
 	{
-		auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
-		auto address_in_ram = (address - 0xA000) + offset_into_ram;
-		return RamBanks[address_in_ram];
+			std::cout << "reading from RAM" << std::endl;
+
+			const uint16_t address_into_bank = address - 0xA000;
+			const uint16_t bank_offset = 0x8000 * ActiveRomRamBank.GetRamBank();
+			const uint16_t address_in_ram = bank_offset + address_into_bank;
+			return RamBanks[address_in_ram];
 	}
 
-	return uint8_t{};
+	return Memory[address];
 }
 
 void GameBoy::MBCWriteOptimal(const uint16_t& address, const uint8_t byte)
@@ -669,6 +653,7 @@ void GameBoy::MBCWriteOptimal(const uint16_t& address, const uint8_t byte)
 	case mbc2:
 		break;
 	case mbc3:
+		//std::cout << "writing mbc3" << std::endl;
 		MBC3Write(address, byte);
 		break;
 	case mbc4:
@@ -706,4 +691,14 @@ uint8_t GameBoy::MBCReadOptimal(const uint16_t& address)
 	default:
 		break;
 	}
+}
+
+void GameBoy::SwitchRomBank(uint8_t bank)
+{
+	ActiveRomRamBank.romBank = bank;
+}
+
+void GameBoy::SwitchRamBank(uint8_t bank)
+{
+
 }

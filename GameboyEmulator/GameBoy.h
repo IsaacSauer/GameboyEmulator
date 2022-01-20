@@ -195,17 +195,9 @@ Bits 1-0 - Input Clock Select
 	uint8_t Memory[0x10000]; //The Entire addressable range; "memory" is not quite right.. //TODO: Improve (not all locations will be used)
 	struct
 	{
-		union
-		{
-			uint8_t data{};
-
-			struct
-			{
-				uint8_t romBank : 5;
-				uint8_t ramOrRomBank : 2;
-				bool isRam : 1;
-			};
-		};
+		uint8_t romBank = 5;
+		uint8_t ramOrRomBank = 2;
+		bool isRam = true;
 
 		uint8_t GetRomBank() const noexcept
 		{
@@ -220,8 +212,8 @@ Bits 1-0 - Input Clock Select
 	MBCs Mbc{};
 	std::vector<uint8_t> RamBanks{};
 	std::vector<uint8_t> Rom{};
-	bool RamBankEnabled : 1;
-	bool m_Ram_Over_Rtc = true;
+	bool RamBankEnabled = true;
+	bool RamOverRtc = true;
 
 	uint8_t JoyPadState{ 0xFF };///< States of all 8 keys\n 1==NOT pressed
 	bool IsPaused : 1;
@@ -241,8 +233,6 @@ Bits 1-0 - Input Clock Select
 
 	//MEMORY BANK CONTROLLERS
 private:
-	std::function<void(const uint16_t&, const uint8_t)> MBCWrite{};
-	std::function<uint8_t(const uint16_t&)> MBCRead{};
 
 	void MBCNoneWrite(const uint16_t& address, const uint8_t byte);
 	uint8_t MBCNoneRead(const uint16_t& address);
@@ -255,4 +245,7 @@ private:
 
 	void MBCWriteOptimal(const uint16_t& address, const uint8_t byte);
 	uint8_t MBCReadOptimal(const uint16_t& address);
+
+	void SwitchRomBank(uint8_t bank);
+	void SwitchRamBank(uint8_t bank);
 };

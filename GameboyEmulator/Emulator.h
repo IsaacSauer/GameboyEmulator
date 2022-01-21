@@ -17,10 +17,10 @@ namespace gbee
 		Emulator(const std::string& gbfile, const uint8_t instances);
 		~Emulator();
 
-		Emulator(const Emulator& rhs) = delete; //Copy constructor
-		Emulator(Emulator&& lhs) = delete; //Move Constructor
-		Emulator& operator=(const Emulator& rhs) = delete; //Copy Assignment
-		Emulator& operator=(Emulator&& lhs) = delete; //Move Assignment
+		//Emulator(const Emulator& rhs) = delete; //Copy constructor
+		//Emulator(Emulator&& lhs) = delete; //Move Constructor
+		//Emulator& operator=(const Emulator& rhs) = delete; //Copy Assignment
+		//Emulator& operator=(Emulator&& lhs) = delete; //Move Assignment
 
 		void LoadGame(const std::string& gbFile) const;
 		void Start();

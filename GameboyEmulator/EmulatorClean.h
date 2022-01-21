@@ -25,10 +25,10 @@ namespace gbee
 		Emulator(const std::string& gbfile, const uint8_t instances);
 
 		//lof
-		Emulator(const Emulator& rhs) = delete;
-		Emulator(Emulator&& lhs) = delete;
-		Emulator& operator=(const Emulator& rhs) = delete;
-		Emulator& operator=(Emulator&& lhs) = delete;
+		//Emulator(const Emulator& rhs) = delete;
+		//Emulator(Emulator&& lhs) = delete;
+		//Emulator& operator=(const Emulator& rhs) = delete;
+		//Emulator& operator=(Emulator&& lhs) = delete;
 
 		/**
 		 * \brief Loads the game and resets the gameboy instance

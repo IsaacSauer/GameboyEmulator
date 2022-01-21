@@ -1,13 +1,18 @@
 #include <iostream>
-#include "imgui/SDL2-2.0.10/include/SDL.h"
-#include "imgui/imgui.h"
-#include "imgui/imgui_sdl.h"
-#include "imgui/imgui_impl_sdl.h"
+
+#include <mutex>
+
 #include "../GameboyEmulator/Emulator.h"
 #include "nfd\include\FileDialog.h"
 #include "../GameboyEmulator/Tile.h"
-#include <mutex>
 #include "../GameboyEmulator/GameBoy.h"
+
+#include "SDL.h"
+#include "SDL_image.h"
+
+#include "imgui.h"
+#include "backends/imgui_impl_opengl2.h"
+#include "backends/imgui_impl_sdl.h"
 
 /*
 	This is just a proof of concept, a quick example as to how you'd use the library
@@ -21,6 +26,20 @@ SDL_Texture* textures[INSTANCECOUNT];
 //gbee::Emulator* emu{ };
 
 std::vector<uint16_t> frameBuffer{};
+
+int GetOpenGLDriverIndex()
+{
+	auto openglIndex = -1;
+	const auto driverCount = SDL_GetNumRenderDrivers();
+	for (auto i = 0; i < driverCount; i++)
+	{
+		SDL_RendererInfo info;
+		if (!SDL_GetRenderDriverInfo(i, &info))
+			if (!strcmp(info.name, "opengl"))
+				openglIndex = i;
+	}
+	return openglIndex;
+}
 
 void SetKeyState(const SDL_Event& event, const gbee::Emulator& emu)
 {
@@ -100,6 +119,13 @@ void Update(const gbee::Emulator& emu)
 
 	while (SDLEventPump(emu))
 	{
+		SDL_RenderClear(rendr);
+		ImGui_ImplOpenGL2_NewFrame();
+		ImGui_ImplSDL2_NewFrame(wind);
+		ImGui::NewFrame();
+
+		ImGui::ShowDemoWindow();
+
 		//DRAWING
 		if (true)
 			SDL_UpdateTexture(textures[0], nullptr, static_cast<void*>(frameBuffer.data()), 160 * sizeof(uint16_t));
@@ -114,13 +140,21 @@ void Update(const gbee::Emulator& emu)
 			delete[] pixelBuffer;
 		}
 
-		SDL_RenderClear(rendr);
-		SDL_Rect texture_rect;
-		texture_rect.x = 0;  //the x coordinate
-		texture_rect.y = 0; // the y coordinate
-		texture_rect.w = 800; //the width of the texture
-		texture_rect.h = 720; //the height of the texture
-		SDL_RenderCopy(rendr, textures[0], NULL, &texture_rect);
+		SDL_SetRenderDrawColor(rendr, 114, 144, 154, 255);
+
+		{
+			SDL_Rect texture_rect;
+			texture_rect.x = 0;  //the x coordinate
+			texture_rect.y = 0; // the y coordinate
+			texture_rect.w = 800; //the width of the texture
+			texture_rect.h = 720; //the height of the texture
+			SDL_RenderCopy(rendr, textures[0], NULL, &texture_rect);
+		}
+
+
+		ImGui::Render();
+		ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+
 		SDL_RenderPresent(rendr);
 	}
 }
@@ -147,8 +181,12 @@ int main(int argc, char* argv[])
 			emum.Start();
 
 			std::string base_filename = path.substr(path.find_last_of("/\\") + 1);
-			wind = SDL_CreateWindow("Gameboy Emulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 720, SDL_WINDOW_RESIZABLE);
-			rendr = SDL_CreateRenderer(wind, -1, SDL_RENDERER_ACCELERATED);
+			wind = SDL_CreateWindow(base_filename.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 800, SDL_WINDOW_RESIZABLE); // Original = 800 x 720
+			rendr = SDL_CreateRenderer(wind, GetOpenGLDriverIndex(), SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+
+			SDL_RenderClear(rendr);
+			SDL_SetRenderDrawColor(rendr, 114, 144, 154, 255);
+			SDL_RenderPresent(rendr);
 
 			for (int i{ 0 }; i < INSTANCECOUNT; ++i)
 			{
@@ -161,12 +199,15 @@ int main(int argc, char* argv[])
 			}
 
 			ImGui::CreateContext();
-			ImGuiSDL::Initialize(rendr, 800, 720);
+			ImGui_ImplSDL2_InitForOpenGL(wind, SDL_GL_GetCurrentContext());
+			ImGui_ImplOpenGL2_Init();
+
+			//ImGui::Initialize(rendr, 800, 800);
 
 			Update(emum);
 
 			emum.Stop();
-			ImGuiSDL::Deinitialize();
+			//ImGui::Deinitialize();
 
 			SDL_DestroyRenderer(rendr);
 			SDL_DestroyWindow(wind);
@@ -177,7 +218,7 @@ int main(int argc, char* argv[])
 
 			ImGui::DestroyContext();
 		}
-		catch (const std::exception& e) 
+		catch (const std::exception& e)
 		{
 			std::cout << e.what() << std::endl;
 		}

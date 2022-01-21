@@ -18,7 +18,6 @@ gbee::Emulator::~Emulator()
 void gbee::Emulator::LoadGame(const std::string& gbFile) const
 {
 	Instances[0].LoadGame(gbFile);
-	//Instances[i].SetRunningVariable(true);
 }
 
 void gbee::Emulator::Start()

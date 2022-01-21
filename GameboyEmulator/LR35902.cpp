@@ -2208,8 +2208,10 @@ void LR35902::DrawSprite(unsigned int spriteN)
 	int start_y = sprite_y - 16;
 	int start_x = sprite_x - 8;
 
+#pragma loop( hint_parallel( 40 ) )
 	for (unsigned int y = 0; y < TILE_HEIGHT_PX * sprite_size_multiplier; y++)
 	{
+#pragma loop( hint_parallel( 40 ) )
 		for (unsigned int x = 0; x < TILE_WIDTH_PX; x++)
 		{
 			unsigned int maybe_flipped_y = !flip_y ? y : (TILE_HEIGHT_PX * sprite_size_multiplier) - y - 1;

@@ -11,10 +11,7 @@ gbee::Emulator::Emulator(const std::string& gbfile, const uint8_t instances) : I
 
 gbee::Emulator::~Emulator()
 {
-	for (int i{ 0 }; i < InstanceCount; ++i)
-	{
-		Instances[i].SetRunningVariable(false);
-	}
+	Instances[0].SetRunningVariable(false);
 	delete[] Instances;
 }
 
@@ -28,7 +25,7 @@ void gbee::Emulator::Start()
 {
 	Instances[0].SetRunningVariable(true);
 	thread = std::thread{ &GameBoy::Update, std::ref(Instances[0]) };
-	//thread.detach(); //We don't need to sync them, ever..
+	thread.detach(); //We don't need to sync them, ever..
 }
 
 void gbee::Emulator::Stop()

@@ -43,7 +43,7 @@ void GameBoy::LoadGame(const std::string& gbFile)
 
 	std::cout << "ram size: " << std::to_string(header.ramSizeValue) << std::endl;
 
-	std::cout << "actual rom size"<< std::to_string(Rom[0x0148]) << std::endl;
+	std::cout << "actual rom size" << std::to_string(Rom[0x0148]) << std::endl;
 
 	RamBankEnabled = header.ramSizeValue;
 
@@ -93,7 +93,6 @@ void GameBoy::Update()
 
 	while (IsRunning)
 	{
-
 		if (true)
 		{
 #pragma region Old
@@ -166,9 +165,8 @@ void GameBoy::Update()
 
 			Cpu.HandleInterupts();
 
-			if(diff > 500)
+			if (diff > 500)
 				std::cout << diff << std::endl;
-
 		}
 	}
 }
@@ -632,12 +630,12 @@ uint8_t GameBoy::MBC3Read(const uint16_t& address)
 	if (InRange(address, 0xA000, 0xBFFF) &&
 		RamOverRtc)
 	{
-			std::cout << "reading from RAM" << std::endl;
+		std::cout << "reading from RAM" << std::endl;
 
-			const uint16_t address_into_bank = address - 0xA000;
-			const uint16_t bank_offset = 0x8000 * ActiveRomRamBank.GetRamBank();
-			const uint16_t address_in_ram = bank_offset + address_into_bank;
-			return RamBanks[address_in_ram];
+		const uint16_t address_into_bank = address - 0xA000;
+		const uint16_t bank_offset = 0x8000 * ActiveRomRamBank.GetRamBank();
+		const uint16_t address_in_ram = bank_offset + address_into_bank;
+		return RamBanks[address_in_ram];
 	}
 
 	return Memory[address];
@@ -692,6 +690,7 @@ uint8_t GameBoy::MBCReadOptimal(const uint16_t& address)
 	case unknown:
 		break;
 	default:
+		return 0;
 		break;
 	}
 }

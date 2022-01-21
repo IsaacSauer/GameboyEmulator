@@ -10,7 +10,7 @@ class FrameBuffer;
  */
 namespace gbee
 {
-	enum Key : uint8_t { right, aButton, left, bButton, up, select, down, start };
+	//enum Key : uint8_t { right, aButton, left, bButton, up, select, down, start };
 
 	/**
 	 * \brief This class handles the entire emulation environment

@@ -3,10 +3,11 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_sdl.h"
 #include "imgui/imgui_impl_sdl.h"
-#include "../GameboyEmulator/EmulatorClean.h"
+#include "../GameboyEmulator/Emulator.h"
 #include "nfd\include\FileDialog.h"
 #include "../GameboyEmulator/Tile.h"
 #include <mutex>
+#include "../GameboyEmulator/GameBoy.h"
 
 /*
 	This is just a proof of concept, a quick example as to how you'd use the library
@@ -21,45 +22,45 @@ SDL_Texture* textures[INSTANCECOUNT];
 
 std::vector<uint16_t> frameBuffer{};
 
-void SetKeyState(const SDL_Event& event, gbee::Emulator* emu)
+void SetKeyState(const SDL_Event& event, const gbee::Emulator& emu)
 {
 	//Just ini 0
 	if (event.type != SDL_KEYDOWN && event.type != SDL_KEYUP) return;
 
-	gbee::Key key;
+	Key key;
 	switch (event.key.keysym.sym)
 	{
 	case SDLK_a:
-		key = gbee::aButton;
+		key = aButton;
 		break;
 	case SDLK_d:
-		key = gbee::bButton;
+		key = bButton;
 		break;
 	case SDLK_RETURN:
-		key = gbee::start;
+		key = start;
 		break;
 	case SDLK_SPACE:
-		key = gbee::select;
+		key = select;
 		break;
 	case SDLK_RIGHT:
-		key = gbee::right;
+		key = right;
 		break;
 	case SDLK_LEFT:
-		key = gbee::left;
+		key = left;
 		break;
 	case SDLK_UP:
-		key = gbee::up;
+		key = up;
 		break;
 	case SDLK_DOWN:
-		key = gbee::down;
+		key = down;
 		break;
 	default:
 		return;
 	}
-	emu->SetKeyState(key, event.type == SDL_KEYDOWN, 0);
+	emu.SetKeyState(key, event.type == SDL_KEYDOWN, 0);
 }
 
-bool SDLEventPump(gbee::Emulator* emu)
+bool SDLEventPump(const gbee::Emulator& emu)
 {
 	SDL_Event e;
 	while (SDL_PollEvent(&e))
@@ -72,9 +73,9 @@ bool SDLEventPump(gbee::Emulator* emu)
 	return true;
 }
 
-void CraftPixelBuffer(const uint8_t instance, uint16_t* buffer, gbee::Emulator* emu)
+void CraftPixelBuffer(const uint8_t instance, uint16_t* buffer, const gbee::Emulator& emu)
 {
-	std::bitset<160 * 144 * 2> bitBuffer{ emu->GetFrameBuffer(instance) };
+	std::bitset<160 * 144 * 2> bitBuffer{ emu.GetFrameBuffer(instance) };
 
 #pragma loop(hint_parallel(20))
 	for (int i{ 0 }; i < 160 * 144; ++i)
@@ -93,7 +94,7 @@ void VBlankCallback(const FrameBuffer& buffer)
 	}
 }
 
-void Update(gbee::Emulator* emu)
+void Update(const gbee::Emulator& emu)
 {
 	const float fps{ 59.73f };
 
@@ -104,9 +105,13 @@ void Update(gbee::Emulator* emu)
 			SDL_UpdateTexture(textures[0], nullptr, static_cast<void*>(frameBuffer.data()), 160 * sizeof(uint16_t));
 		else
 		{
-			uint16_t pixelBuffer[160 * 144]{};
+			uint16_t* pixelBuffer = new uint16_t[160 * 140]{};
+
+			//uint16_t pixelBuffer[160 * 144]{};
 			CraftPixelBuffer(static_cast<uint8_t>(0), pixelBuffer, emu);
 			SDL_UpdateTexture(textures[0], nullptr, static_cast<void*>(pixelBuffer), 160 * sizeof(uint16_t));
+
+			delete[] pixelBuffer;
 		}
 
 		SDL_RenderClear(rendr);
@@ -118,18 +123,6 @@ void Update(gbee::Emulator* emu)
 		SDL_RenderCopy(rendr, textures[0], NULL, &texture_rect);
 		SDL_RenderPresent(rendr);
 	}
-
-	emu->Stop();
-	ImGuiSDL::Deinitialize();
-
-	SDL_DestroyRenderer(rendr);
-	SDL_DestroyWindow(wind);
-	for (int i{ 0 }; i < 1; ++i)
-	{
-		SDL_DestroyTexture(textures[i]);
-	}
-
-	ImGui::DestroyContext();
 }
 
 int main(int argc, char* argv[])
@@ -147,14 +140,14 @@ int main(int argc, char* argv[])
 	{
 		try
 		{
-			gbee::Emulator* emum = new gbee::Emulator{ path, 1 };
+			gbee::Emulator emum{ path, 1 };
 
-			emum->AssignDrawCallback(VBlankCallback);
-			emum->LoadGame(path);
-			emum->Start();
+			emum.AssignDrawCallback(VBlankCallback);
+			emum.LoadGame(path);
+			emum.Start();
 
 			std::string base_filename = path.substr(path.find_last_of("/\\") + 1);
-			wind = SDL_CreateWindow(base_filename.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 720, SDL_WINDOW_RESIZABLE);
+			wind = SDL_CreateWindow("Gameboy Emulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 720, SDL_WINDOW_RESIZABLE);
 			rendr = SDL_CreateRenderer(wind, -1, SDL_RENDERER_ACCELERATED);
 
 			for (int i{ 0 }; i < INSTANCECOUNT; ++i)
@@ -171,6 +164,18 @@ int main(int argc, char* argv[])
 			ImGuiSDL::Initialize(rendr, 800, 720);
 
 			Update(emum);
+
+			emum.Stop();
+			ImGuiSDL::Deinitialize();
+
+			SDL_DestroyRenderer(rendr);
+			SDL_DestroyWindow(wind);
+			for (int i{ 0 }; i < 1; ++i)
+			{
+				SDL_DestroyTexture(textures[i]);
+			}
+
+			ImGui::DestroyContext();
 		}
 		catch (const std::exception& e) 
 		{

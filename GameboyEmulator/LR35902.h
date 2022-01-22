@@ -23,65 +23,6 @@ struct mem_access;
 
 struct Registers final
 {
-	//	enum Flags : uint8_t { zero = 7, subtract = 6, halfcarry = 5, carry = 4 };
-	//
-	//	uint8_t a{}, b{}, c{}, d{}, e{};
-	//
-	//	union
-	//	{
-	//		uint8_t f{}; //TODO: Lower nible is ALWAYS 0!!!
-	//#ifndef _MSC_VER
-	//#error	Compiler might not be supported
-	//		/*
-	//		 * Allocation of union variables is implementation-defined!
-	//		 * So, the below MIGHT not be allocated correctly
-	//		 * zeroF is supposed to be bit 7/7
-	//		 */
-	//#endif
-	//		struct
-	//		{
-	//			uint8_t unusedF : 4;
-	//			uint8_t carryF : 1;
-	//			uint8_t halfCarryF : 1;
-	//			uint8_t subtractF : 1;
-	//			uint8_t zeroF : 1;
-	//		};
-	//	};
-	//
-	//	uint8_t h{}, l{};
-	//
-	//	uint16_t af() const { return static_cast<uint16_t>(a) << 8 | f; }
-	//
-	//	void af(uint16_t value)
-	//	{
-	//		a = value >> 8;
-	//		f = value & 0xF0;
-	//	}
-	//
-	//	uint16_t bc() const { return static_cast<uint16_t>(b) << 8 | c; }
-	//
-	//	void bc(uint16_t value)
-	//	{
-	//		b = value >> 8;
-	//		c = value & 0xFF;
-	//	}
-	//
-	//	uint16_t de() const { return static_cast<uint16_t>(d) << 8 | e; }
-	//
-	//	void de(uint16_t value)
-	//	{
-	//		d = value >> 8;
-	//		e = value & 0xFF;
-	//	}
-	//
-	//	uint16_t hl() const { return static_cast<uint16_t>(h) << 8 | l; }
-	//
-	//	void hl(uint16_t value)
-	//	{
-	//		h = value >> 8;
-	//		l = value & 0xFF;
-	//	}
-
 	union
 	{
 		uint8_t regs[8];
@@ -837,6 +778,10 @@ public:
 
 	ByteRegister dma_transfer{}; /* DMA */
 	FrameBuffer& GetBuffer() { return buffer; }
+
+	Palette gb_palette{};
+	static void SetColor(Color& col, float* newCol);
+
 private:
 	void ResetFrameBuffer();
 
@@ -865,7 +810,7 @@ private:
 
 	static Color GetRealColor(uint8_t pixelValue);
 	static Palette LoadPalette(ByteRegister& palette_register);
-	static Color GetColorFromPalette(GBColor color, const Palette& palette);
+	Color GetColorFromPalette(GBColor color, const Palette& palette);
 
 	FrameBuffer buffer;
 	FrameBuffer background_map;
@@ -876,13 +821,3 @@ private:
 
 #pragma endregion
 };
-
-//const unsigned int CLOCKS_PER_HBLANK = 204; /* Mode 0 */
-//const unsigned int CLOCKS_PER_SCANLINE_OAM = 80; /* Mode 2 */
-//const unsigned int CLOCKS_PER_SCANLINE_VRAM = 172; /* Mode 3 */
-//const unsigned int CLOCKS_PER_SCANLINE =
-//(CLOCKS_PER_SCANLINE_OAM + CLOCKS_PER_SCANLINE_VRAM + CLOCKS_PER_HBLANK);
-//
-//const unsigned int CLOCKS_PER_VBLANK = 4560; /* Mode 1 */
-//const unsigned int SCANLINES_PER_FRAME = 144;
-//const unsigned int CLOCKS_PER_FRAME = (CLOCKS_PER_SCANLINE * SCANLINES_PER_FRAME) + CLOCKS_PER_VBLANK;

@@ -126,16 +126,13 @@ void Update(gbee::Emulator& emu)
 		ImGui_ImplSDL2_NewFrame(wind);
 		ImGui::NewFrame();
 
-		//ImGui::ShowDemoWindow();
-
 		//IMGUI
 		{
 			ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
 				ImGuiWindowFlags_NoMove |
 				ImGuiWindowFlags_NoResize |
 				ImGuiWindowFlags_NoSavedSettings |
-				ImGuiWindowFlags_NoBackground /*|
-				ImGuiWindowFlags_MenuBar*/;
+				ImGuiWindowFlags_NoBackground;
 
 			ImGuiStyle& style = ImGui::GetStyle();
 			style.FrameRounding = 4.f;
@@ -169,6 +166,27 @@ void Update(gbee::Emulator& emu)
 				emu.SetAutoSpeed(autoSpeed, 0);
 			ImGui::SameLine();
 			ImGui::SliderInt("Speed", &speedModifiers, 1, 1000);
+
+			////COLOR
+			//ImGui::Spacing();
+			//if (ImGui::TreeNode("Color 0:"))
+			//{
+			//	static ImVec4 color = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+			//	ImGuiColorEditFlags misc_flags = flags;
+			//	flags |= ImGuiColorEditFlags_NoAlpha;        // This is by default if you call ColorPicker3() instead of ColorPicker4()
+			//	flags |= ImGuiColorEditFlags_AlphaBar;
+			//	flags |= ImGuiColorEditFlags_PickerHueBar;
+			//	flags |= ImGuiColorEditFlags_PickerHueWheel;
+			//	flags |= ImGuiColorEditFlags_NoInputs;       // Disable all RGB/HSV/Hex displays
+			//	flags |= ImGuiColorEditFlags_DisplayRGB;     // Override display mode
+			//	flags |= ImGuiColorEditFlags_DisplayHSV;
+			//	flags |= ImGuiColorEditFlags_DisplayHex;
+			//	if (ImGui::ColorPicker4("Color", (float*)&color, misc_flags, nullptr))
+			//	{
+			//		emu.SetColor0((float*)&color);
+			//	}
+			//	ImGui::TreePop();
+			//}
 
 			ImGui::End();
 			emu.SetSpeed(speedModifiers, 0);

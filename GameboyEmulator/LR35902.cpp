@@ -61,22 +61,6 @@ LR35902::LR35902(GameBoy& gameboy)
 	, buffer(GAMEBOY_WIDTH, GAMEBOY_HEIGHT)
 	, background_map(BG_MAP_SIZE, BG_MAP_SIZE)
 {
-	////DisplayEnabled
-	//control_byte = bitwise::set_bit_to(control_byte, 0, true);
-	////WindowTileMap
-	//control_byte = bitwise::set_bit_to(control_byte, 1, true);
-	////WindowEnabled
-	//control_byte = bitwise::set_bit_to(control_byte, 2, true);
-	////BgWindowTileData
-	//control_byte = bitwise::set_bit_to(control_byte, 3, false);
-	////BgTileMapDisplay
-	//control_byte = bitwise::set_bit_to(control_byte, 4, true);
-	////SpriteSize
-	//control_byte = bitwise::set_bit_to(control_byte, 5, false);
-	////SpritesEnabled
-	//control_byte = bitwise::set_bit_to(control_byte, 6, true);
-	////BgEnabled
-	//control_byte = bitwise::set_bit_to(control_byte, 7, true);
 }
 
 void LR35902::Reset(const bool skipBoot)
@@ -157,7 +141,7 @@ void LR35902::ExecuteNextOpcode()
 			std::to_string(Register.reg8.L) + ", " <<
 			"IF:" + std::to_string(Gameboy.GetIF()) + ", " <<
 			"SP:" + std::to_string(Gameboy.ReadMemory(Register.sp)) + ':' + std::to_string(Gameboy.ReadMemory(Register.sp + 1)) << std::endl;
-	}
+}
 #endif
 
 	if (m_opcode == 0xcb)
@@ -950,33 +934,17 @@ uint8_t LR35902::ExecuteOpcode()
 #pragma endregion
 #ifdef _DEBUG
 	default:
-		//TODO: cancel execution and write all missing opcodes to a log file.
-		//assert(("Opcode not implemented", false));
-		//assert(false);
 		break;
 #endif
 	}
 
-	//	uint8_t   x;
-	//	switch (opcode)
-	//	{
-	//#include "lr35902/opc_main.hxx"
-	//	default:
-	//
-	//		break;
-	//	}
 	Gameboy.AddCycles((uint8_t)cycles_per_instruction[opcode]);
-
-	//std::cout << disassembleToString(opcode) << std::endl;
-	//std::cout << "cycles this opcode took: " << std::to_string(cycles) << std::endl;
-
 	return cycles;
 }
 
 uint8_t LR35902::ExecuteOpcodeCB()
 {
 	uint8_t opcode = m_opcode;
-	//assert(Gameboy.ReadMemory(Register.pc - 1) == opcode); //pc is pointing to first argument
 	uint8_t cycles{ (uint8_t)cycles_per_instruction_cb[opcode] };
 
 	switch (opcode)
@@ -1677,18 +1645,7 @@ uint8_t LR35902::ExecuteOpcodeCB()
 #endif
 	}
 
-	//	uint8_t   x;
-	//	switch (opcode)
-	//	{
-	//#include "lr35902/opc_cb.hxx"
-	//	default:
-	//
-	//		break;
-	//	}
 	Gameboy.AddCycles((uint8_t)cycles_per_instruction_cb[opcode]);
-
-	//std::cout << disassembleCBToString(opcode) << std::endl;
-	//std::cout << "cycles this opcode took: " << std::to_string(cycles) << std::endl;
 
 	return cycles;
 }
@@ -1980,6 +1937,17 @@ uint16_t LR35902::mmu_read(uint16_t addr)
 void LR35902::register_vblank_callback(const vblank_callback_t& _vblank_callback)
 {
 	vblank_callback = _vblank_callback;
+}
+
+void LR35902::SetColor(Color& col, float* newCol)
+{
+	//uint16_t col16{};
+	//col16 |= 8 << uint16_t(newCol[0] * 16);
+	//col16 |= 4 << uint16_t(newCol[1] * 16);
+	//col16 |= 2 << uint16_t(newCol[2] * 16);
+	//col16 |= uint16_t(0xF);
+
+	//col = (Color)col16;
 }
 
 void LR35902::ResetFrameBuffer()
@@ -2298,6 +2266,10 @@ Color LR35902::GetColorFromPalette(GBColor color, const Palette& palette)
 {
 	switch (color)
 	{
+		//case GBColor::Color0: return gb_palette.color0;
+		//case GBColor::Color1: return gb_palette.color1;
+		//case GBColor::Color2: return gb_palette.color2;
+		//case GBColor::Color3: return gb_palette.color3;
 	case GBColor::Color0: return palette.color0;
 	case GBColor::Color1: return palette.color1;
 	case GBColor::Color2: return palette.color2;

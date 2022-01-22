@@ -134,6 +134,11 @@ public:
 	 */
 	void SetOnlyDrawLastFrame(const bool state) noexcept { OnlyDrawLast = state; }
 
+	void SetColor0(float* color);
+	void SetColor1(float* color);
+	void SetColor2(float* color);
+	void SetColor3(float* color);
+
 private:
 	std::atomic<bool> m_Reset = false;
 

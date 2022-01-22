@@ -45,6 +45,10 @@ namespace gbee
 
 		void Join();
 
+		void SetColor0(float* color);
+		void SetColor1(float* color);
+		void SetColor2(float* color);
+		void SetColor3(float* color);
 	private:
 		GameBoy* Instances;
 		const uint8_t InstanceCount;

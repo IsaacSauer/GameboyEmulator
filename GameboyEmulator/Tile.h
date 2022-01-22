@@ -23,10 +23,10 @@ enum class GBColor
 };
 enum class Color : uint16_t
 {
-	White = 0xFFFF,
-	LightGray = 0xAAAA,
-	DarkGray = 0x4444,
-	Black = 0x0000,
+	White = 0xEFDF,
+	LightGray = 0x8C7F,
+	DarkGray = 0x365F,
+	Black = 0x012F,
 };
 struct Palette
 {

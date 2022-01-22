@@ -43,7 +43,7 @@ void GameBoy::LoadGame(const std::string& gbFile)
 
 	std::cout << "ram size: " << std::to_string(header.ramSizeValue) << std::endl;
 
-	std::cout << "actual rom size" << std::to_string(Rom[0x0148]) << std::endl;
+	std::cout << "actual rom size: " << std::to_string(Rom[0x0148]) << std::endl;
 
 	RamBankEnabled = header.ramSizeValue;
 
@@ -126,7 +126,7 @@ void GameBoy::Update()
 					Cpu.HandleGraphics(stepCycles, cycleBudget,
 						!OnlyDrawLast || !(IsCycleFrameBound & 1) || IsCycleFrameBound & 1 && CyclesFramesToRun == 1);
 					//If vblank interrupt and we're frame bound, subtract frames and call pause if needed
-					if (/*interrupt_flag.value()*/GetIF() & 1 && IsCycleFrameBound & 1 && !--CyclesFramesToRun)
+					if (GetIF() & 1 && IsCycleFrameBound & 1 && !--CyclesFramesToRun)
 					{
 						IsCycleFrameBound = 0;
 						IsPaused = true;
@@ -392,9 +392,6 @@ void GameBoy::WriteMemoryWord(const uint16_t pos, const uint16_t value)
 
 void GameBoy::RequestInterrupt(Interupts bit) noexcept
 {
-	//interrupt_flag.set_bit_to(bit, true);
-	////interrupt_flag.set(interrupt_flag.value() | (1 << bit));
-	////interrupt_flag |= 1 << bit;
 	GetIF() |= 1 << bit;
 }
 
@@ -416,6 +413,26 @@ void GameBoy::SetKey(const Key key, const bool pressed)
 	}
 	else
 		JoyPadState |= (1 << key);
+}
+
+void GameBoy::SetColor0(float* color)
+{
+	Cpu.SetColor(Cpu.gb_palette.color0, color);
+}
+
+void GameBoy::SetColor1(float* color)
+{
+	Cpu.SetColor(Cpu.gb_palette.color1, color);
+}
+
+void GameBoy::SetColor2(float* color)
+{
+	Cpu.SetColor(Cpu.gb_palette.color2, color);
+}
+
+void GameBoy::SetColor3(float* color)
+{
+	Cpu.SetColor(Cpu.gb_palette.color3, color);
 }
 
 void GameBoy::HandleTimers(const unsigned stepCycles, const unsigned cycleBudget)
@@ -462,7 +479,6 @@ void GameBoy::HandleTimers(const unsigned stepCycles, const unsigned cycleBudget
 			if (!++TIMATimer)
 			{
 				TIMATimer = TMATimer;
-				//interrupt_flag |= Interupts::timer;
 				GetIF() |= 0x4;
 			}
 			TIMACycles -= threshold; //threshold == 0??
@@ -510,7 +526,7 @@ void GameBoy::MBC1Write(const uint16_t& address, const uint8_t byte)
 		if (byte == 0x40) { SwitchRomBank(0x41); return; }
 		if (byte == 0x60) { SwitchRomBank(0x61); return; }
 
-		uint16_t rom_bank_bits = byte & 0x1F;
+		uint8_t rom_bank_bits = byte & 0x1F;
 		SwitchRomBank(rom_bank_bits);
 	}
 
@@ -693,6 +709,7 @@ uint8_t GameBoy::MBCReadOptimal(const uint16_t& address)
 		return 0;
 		break;
 	}
+	return 0;
 }
 
 void GameBoy::SwitchRomBank(uint8_t bank)

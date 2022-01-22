@@ -134,11 +134,11 @@ void LR35902::Reset(const bool skipBoot)
 
 void LR35902::ExecuteNextOpcode()
 {
-	//if (Halted)
-	//{
-	//	Gameboy.AddCycles(1);
-	//	return;
-	//}
+	if (Halted)
+	{
+		Gameboy.AddCycles(1);
+		return;
+	}
 
 	m_opcode = Gameboy.ReadMemory(Register.pc++);
 

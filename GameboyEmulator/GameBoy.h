@@ -241,6 +241,8 @@ Bits 1-0 - Input Clock Select
 
 	//MEMORY BANK CONTROLLERS
 private:
+	void MBCWrite(const uint16_t& address, const uint8_t byte);
+	uint8_t MBCRead(const uint16_t& address);
 
 	void MBCNoneWrite(const uint16_t& address, const uint8_t byte);
 	uint8_t MBCNoneRead(const uint16_t& address);
@@ -250,9 +252,6 @@ private:
 
 	void MBC3Write(const uint16_t& address, const uint8_t byte);
 	uint8_t MBC3Read(const uint16_t& address);
-
-	void MBCWriteOptimal(const uint16_t& address, const uint8_t byte);
-	uint8_t MBCReadOptimal(const uint16_t& address);
 
 	void SwitchRomBank(uint8_t bank);
 	void SwitchRamBank(uint8_t bank);

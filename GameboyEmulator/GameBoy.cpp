@@ -93,80 +93,53 @@ void GameBoy::Update()
 
 	while (IsRunning)
 	{
-		if (true)
-		{
-#pragma region Old
-			if (m_Reset)
-				LoadGame(fileName);
+		if (m_Reset)
+			LoadGame(fileName);
 
-			const clock_t currentTicks = { clock() / (CLOCKS_PER_SEC / 1000) };
-			//I'm keeping fps in mind to ensure a smooth simulation, if we make the cyclebudget infinite, we have 0 control
-			if (!IsPaused && static_cast<float>(lastValidTick) + timeAdded < static_cast<float>(currentTicks))
-			{
-				if (AutoSpeed && static_cast<float>(currentTicks) - (static_cast<float>(lastValidTick) + timeAdded) >= .5f && SpeedMultiplier >= 2)
-				{
-					--SpeedMultiplier;
-				}
-				CurrentCycles = 0;
-				//4194304 cycles can be done in a second (standard gameboy)
-				const unsigned int cycleBudget{ static_cast<unsigned>(ceil(4194304.0f / fps)) * SpeedMultiplier };
-				while (IsRunning && !IsPaused && CurrentCycles < cycleBudget)
-				{
-					unsigned int stepCycles{ CurrentCycles };
-					Cpu.ExecuteNextOpcode();
-					stepCycles = CurrentCycles - stepCycles;
-					//If we're cycle bound, subtract cycles and call pause if needed
-					if (IsCycleFrameBound & 2 && (CyclesFramesToRun - stepCycles > CyclesFramesToRun || !(CyclesFramesToRun -= stepCycles)))
-					{
-						IsCycleFrameBound = 0;
-						IsPaused = true;
-					}
-					HandleTimers(stepCycles, cycleBudget);
-					//Draw if we don't care, are not frame bound or are on the final frame
-					Cpu.HandleGraphics(stepCycles, cycleBudget,
-						!OnlyDrawLast || !(IsCycleFrameBound & 1) || IsCycleFrameBound & 1 && CyclesFramesToRun == 1);
-					//If vblank interrupt and we're frame bound, subtract frames and call pause if needed
-					if (GetIF() & 1 && IsCycleFrameBound & 1 && !--CyclesFramesToRun)
-					{
-						IsCycleFrameBound = 0;
-						IsPaused = true;
-					}
-					Cpu.HandleInterupts();
-				}
-				lastValidTick = currentTicks;
-				idle = false;
-			}
-			else if (!idle)
-			{
-				if (AutoSpeed && static_cast<float>(lastValidTick) + timeAdded - static_cast<float>(currentTicks) >= .5f)
-				{
-					++SpeedMultiplier;
-				}
-				idle = true;
-			}
-#pragma endregion
-		}
-		else
+		const clock_t currentTicks = { clock() / (CLOCKS_PER_SEC / 1000) };
+		//I'm keeping fps in mind to ensure a smooth simulation, if we make the cyclebudget infinite, we have 0 control
+		if (!IsPaused && static_cast<float>(lastValidTick) + timeAdded < static_cast<float>(currentTicks))
 		{
-			Measure measure{ "measurement" };
-
+			if (AutoSpeed && static_cast<float>(currentTicks) - (static_cast<float>(lastValidTick) + timeAdded) >= .5f && SpeedMultiplier >= 2)
+			{
+				--SpeedMultiplier;
+			}
+			CurrentCycles = 0;
+			//4194304 cycles can be done in a second (standard gameboy)
 			const unsigned int cycleBudget{ static_cast<unsigned>(ceil(4194304.0f / fps)) * SpeedMultiplier };
-
-			unsigned int stepCycles{ CurrentCycles };
-			Cpu.ExecuteNextOpcode();
-			stepCycles = CurrentCycles - stepCycles;
-
-			HandleTimers(stepCycles, cycleBudget);
-
-			measure.Start();
-			Cpu.HandleGraphics(stepCycles, cycleBudget,
-				!OnlyDrawLast || !(IsCycleFrameBound & 1) || IsCycleFrameBound & 1 && CyclesFramesToRun == 1);
-			auto diff = measure.Stop();
-
-			Cpu.HandleInterupts();
-
-			if (diff > 500)
-				std::cout << diff << std::endl;
+			while (IsRunning && !IsPaused && CurrentCycles < cycleBudget)
+			{
+				unsigned int stepCycles{ CurrentCycles };
+				Cpu.ExecuteNextOpcode();
+				stepCycles = CurrentCycles - stepCycles;
+				//If we're cycle bound, subtract cycles and call pause if needed
+				if (IsCycleFrameBound & 2 && (CyclesFramesToRun - stepCycles > CyclesFramesToRun || !(CyclesFramesToRun -= stepCycles)))
+				{
+					IsCycleFrameBound = 0;
+					IsPaused = true;
+				}
+				HandleTimers(stepCycles, cycleBudget);
+				//Draw if we don't care, are not frame bound or are on the final frame
+				Cpu.HandleGraphics(stepCycles, cycleBudget,
+					!OnlyDrawLast || !(IsCycleFrameBound & 1) || IsCycleFrameBound & 1 && CyclesFramesToRun == 1);
+				//If vblank interrupt and we're frame bound, subtract frames and call pause if needed
+				if (GetIF() & 1 && IsCycleFrameBound & 1 && !--CyclesFramesToRun)
+				{
+					IsCycleFrameBound = 0;
+					IsPaused = true;
+				}
+				Cpu.HandleInterupts();
+			}
+			lastValidTick = currentTicks;
+			idle = false;
+		}
+		else if (!idle)
+		{
+			if (AutoSpeed && static_cast<float>(lastValidTick) + timeAdded - static_cast<float>(currentTicks) >= .5f)
+			{
+				++SpeedMultiplier;
+			}
+			idle = true;
 		}
 	}
 }
@@ -275,7 +248,7 @@ uint8_t GameBoy::ReadMemory(const uint16_t pos)
 
 	if (InRange(pos, 0x0, 0x7FFF) || //ROM bank
 		InRange(pos, 0xA000, 0xBFFF)) //RAM Bank
-		return MBCReadOptimal(pos);
+		return MBCRead(pos);
 
 	if (pos == 0xFF00) //Input
 		return GetJoypadState();
@@ -309,13 +282,13 @@ void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 	{
 		if (InRange(address, 0x4000, 0x7fff))
 		{
-			MBCWriteOptimal(address, data);
+			MBCWrite(address, data);
 			return;
 		}
 
 		//External (cartridge) ram
 		if (InRange(address, 0xa000, 0xbfff))
-			MBCWriteOptimal(address, data);
+			MBCWrite(address, data);
 		return;
 	}
 
@@ -657,7 +630,7 @@ uint8_t GameBoy::MBC3Read(const uint16_t& address)
 	return Memory[address];
 }
 
-void GameBoy::MBCWriteOptimal(const uint16_t& address, const uint8_t byte)
+void GameBoy::MBCWrite(const uint16_t& address, const uint8_t byte)
 {
 	switch (Mbc)
 	{
@@ -684,7 +657,7 @@ void GameBoy::MBCWriteOptimal(const uint16_t& address, const uint8_t byte)
 	}
 }
 
-uint8_t GameBoy::MBCReadOptimal(const uint16_t& address)
+uint8_t GameBoy::MBCRead(const uint16_t& address)
 {
 	switch (Mbc)
 	{

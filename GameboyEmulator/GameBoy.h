@@ -38,7 +38,6 @@ public:
 
 	void Update();
 	void LoadGame(const std::string& gbFile);
-	void Reset() { m_Reset = true; }
 
 	void SetRunningVariable(bool isRunning) { IsRunning = isRunning; }
 	GameHeader ReadHeader();
@@ -140,8 +139,6 @@ public:
 	void SetColor3(float* color);
 
 private:
-	std::atomic<bool> m_Reset = false;
-
 	bool m_TestingOpcodes = false;
 	std::string fileName{};
 
@@ -207,13 +204,11 @@ Bits 1-0 - Input Clock Select
 
 		uint8_t GetRomBank() const noexcept
 		{
-			//return romBank;
 			return isRam ? romBank : ramOrRomBank << 5 | romBank;
 		}
 
 		uint8_t GetRamBank() const noexcept
 		{
-			//return ramBank;
 			return isRam ? ramBank : 0;
 		}
 	} ActiveRomRamBank{};

@@ -111,9 +111,11 @@ void LR35902::Reset(const bool skipBoot)
 		memory[0xFF4A] = 0x00;
 		memory[0xFF4B] = 0x00;
 		memory[0xFFFF] = 0x00;
-
-		Gameboy.GetLY() = 0;
 	}
+	Gameboy.GetLY() = 0;
+
+	//buffer.reset();
+	//background_map.reset();
 }
 
 void LR35902::ExecuteNextOpcode()

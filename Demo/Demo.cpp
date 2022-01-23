@@ -152,10 +152,17 @@ void Update(gbee::Emulator& emu)
 
 				if (OpenFileDialog(path))
 				{
-					emu.Stop();
+					//emu.Stop();
 
+					//emu.LoadGame(path);
+					//emu.Start();
+					emu.Stop();
+					emu.Join();
+					emu.Reset();
+					emu.AssignDrawCallback(VBlankCallback);
 					emu.LoadGame(path);
 					emu.Start();
+
 				}
 			}
 
@@ -165,7 +172,7 @@ void Update(gbee::Emulator& emu)
 			if (ImGui::Checkbox("AutoSpeed", &autoSpeed))
 				emu.SetAutoSpeed(autoSpeed, 0);
 			ImGui::SameLine();
-			ImGui::SliderInt("Speed", &speedModifiers, 1, 1000);
+			ImGui::SliderInt("Speed", &speedModifiers, 1, 100);
 
 			////COLOR
 			//ImGui::Spacing();
@@ -270,6 +277,7 @@ int main(int argc, char* argv[])
 			Update(emum);
 
 			emum.Stop();
+			emum.Join();
 
 			SDL_DestroyRenderer(rendr);
 			SDL_DestroyWindow(wind);

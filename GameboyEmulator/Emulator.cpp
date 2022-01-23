@@ -24,7 +24,7 @@ void gbee::Emulator::Start()
 {
 	Instances[0].SetRunningVariable(true);
 	thread = std::thread{ &GameBoy::Update, std::ref(Instances[0]) };
-	thread.detach(); //We don't need to sync them, ever..
+	//thread.detach(); //We don't need to sync them, ever..
 }
 
 void gbee::Emulator::Stop()
@@ -39,11 +39,11 @@ void gbee::Emulator::AssignDrawCallback(const std::function<void(const FrameBuff
 
 void gbee::Emulator::Reset()
 {
-	for (long i{ 0 }; i < InstanceCount; ++i)
+	if (Instances)
 	{
-		Instances[i].SetRunningVariable(true);
-		std::thread t = std::thread{ &GameBoy::Update, std::ref(Instances[i]) };
-		t.detach(); //We don't need to sync them, ever..
+		Instances[0].SetRunningVariable(false);
+		delete[] Instances;
+		Instances = new GameBoy[InstanceCount];
 	}
 }
 

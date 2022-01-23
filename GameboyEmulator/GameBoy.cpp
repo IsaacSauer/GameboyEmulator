@@ -93,9 +93,6 @@ void GameBoy::Update()
 
 	while (IsRunning)
 	{
-		if (m_Reset)
-			LoadGame(fileName);
-
 		const clock_t currentTicks = { clock() / (CLOCKS_PER_SEC / 1000) };
 		//I'm keeping fps in mind to ensure a smooth simulation, if we make the cyclebudget infinite, we have 0 control
 		if (!IsPaused && static_cast<float>(lastValidTick) + timeAdded < static_cast<float>(currentTicks))
@@ -278,56 +275,27 @@ void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 		return;
 	}
 
-	if (Mbc == mbc3)
+	//External ROM
+	if (InRange(address, 0x0000, 0x7fff))
 	{
-		if (InRange(address, 0x4000, 0x7fff))
-		{
-			MBCWrite(address, data);
-			return;
-		}
-
-		//External (cartridge) ram
-		if (InRange(address, 0xa000, 0xbfff))
-			MBCWrite(address, data);
+		MBCWrite(address, data);
 		return;
 	}
 
-	if (address <= 0x1FFF) //Enable/Disable RAM
+	//External (cartridge) ram
+	if (InRange(address, 0xa000, 0xbfff))
 	{
-		if (Mbc <= mbc1 || Mbc == mbc2 && !(address & 0x100))
-			RamBankEnabled = (data & 0xF) == 0xA;
+		MBCWrite(address, data);
+		return;
 	}
-	else if (InRange(address, static_cast<uint16_t>(0x2000), static_cast<uint16_t>(0x3FFF))) //5 bits;Lower 5 bits of ROM Bank
-	{
-		if (Mbc <= mbc1 || Mbc == mbc2 && address & 0x100)
-			ActiveRomRamBank.romBank = (data ? data : 1) & 0x1F;
-	}
-	else if (InRange(address, static_cast<uint16_t>(0x4000), static_cast<uint16_t>(0x5FFF))) //2 bits;Ram or upper 2 bits of ROM bank
-	{
-		ActiveRomRamBank.ramOrRomBank = data;
-	}
-	else if (InRange(address, static_cast<uint16_t>(0x6000), static_cast<uint16_t>(0x7FFF))) //1 bit; Rom or Ram mode of ^
-	{
-		ActiveRomRamBank.isRam = data;
-	}
-	else if (InRange(address, static_cast<uint16_t>(0xA000), static_cast<uint16_t>(0xBFFF))) //External RAM
-	{
-		if (RamBankEnabled)
-			RamBanks[ActiveRomRamBank.GetRamBank() * 0x8000 + (address - 0xA000)] = data;
-	}
-	else if (InRange(address, static_cast<uint16_t>(0xC000), static_cast<uint16_t>(0xDFFF))) //Internal RAM
+
+	if (InRange(address, static_cast<uint16_t>(0xC000), static_cast<uint16_t>(0xDFFF))) //Internal RAM
 	{
 		Memory[address] = data;
+		return;
 	}
-	else if (InRange(address, static_cast<uint16_t>(0xE000), static_cast<uint16_t>(0xFDFF))) //ECHO RAM
-	{
-		Memory[address] = data;
-		Memory[address - 0x2000] = data;
-	}
-	else if (InRange(address, static_cast<uint16_t>(0xFEA0), static_cast<uint16_t>(0xFEFF))) //Mysterious Restricted Range
-	{
-	}
-	else if (address == 0xFF04) //Reset DIV
+
+	if (address == 0xFF04) //Reset DIV
 	{
 		DIVTimer = 0;
 		DivCycles = 0;
@@ -511,7 +479,7 @@ void GameBoy::MBC1Write(const uint16_t& address, const uint8_t byte)
 
 	if (InRange(address, 0xA000, 0xBFFF))
 	{
-		if (!RamBankEnabled) { return; }
+		if (!RamBankEnabled || RamBanks.empty()) { return; }
 
 		auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
 		auto address_in_ram = (address - 0xA000) + offset_into_ram;
@@ -523,7 +491,7 @@ void GameBoy::MBC3Write(const uint16_t& address, const uint8_t byte)
 {
 	if (InRange(address, 0x0000, 0x1FFF))
 	{
-		std::cout << "toggling ram bank enable" << std::endl;
+		//std::cout << "toggling ram bank enable" << std::endl;
 
 		if (byte == 0x0A)
 			RamBankEnabled = true;
@@ -534,7 +502,7 @@ void GameBoy::MBC3Write(const uint16_t& address, const uint8_t byte)
 
 	if (InRange(address, 0x2000, 0x3FFF))
 	{
-		std::cout << "switching rom bank" << std::endl;
+		//std::cout << "switching rom bank" << std::endl;
 
 		if (byte == 0x0)
 			SwitchRomBank(0x1);
@@ -549,7 +517,7 @@ void GameBoy::MBC3Write(const uint16_t& address, const uint8_t byte)
 
 	if (InRange(address, 0x4000, 0x5FFF))
 	{
-		std::cout << "switching ram bank" << std::endl;
+		//std::cout << "switching ram bank" << std::endl;
 
 		if (byte <= 0x03)
 		{
@@ -563,13 +531,14 @@ void GameBoy::MBC3Write(const uint16_t& address, const uint8_t byte)
 
 	if (InRange(address, 0xA000, 0xBFFF))
 	{
-		std::cout << "writing to RAM" << std::endl;
+		//std::cout << "writing to RAM" << std::endl;
 
 		if (!RamBankEnabled) { return; }
 
 		if (RamOverRtc)
 		{
-			auto offset_into_ram = 0x8000 * ActiveRomRamBank.GetRamBank();
+			auto offset_into_ram = 0x2000 * ActiveRomRamBank.ramBank;
+			//auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
 			auto address_in_ram = (address - 0xA000) + offset_into_ram;
 			RamBanks[address_in_ram] = byte;
 		}
@@ -589,10 +558,11 @@ uint8_t GameBoy::MBC1Read(const uint16_t& address)
 	if (InRange(address, 0x0000, 0x3FFF))
 		return Rom[address];
 
-	if (InRange(address, 0x4000, 0x7FFF))
-		return Rom[address + ((ActiveRomRamBank.GetRomBank() - 1) * 0x4000)];
+	auto idx = address + ((ActiveRomRamBank.GetRomBank() - 1) * 0x4000);
+	if (InRange(address, 0x4000, 0x7FFF) && Rom.size() > idx)
+		return Rom[idx];
 
-	if (InRange(address, 0xA000, 0xBFFF) && RamBankEnabled)
+	if (InRange(address, 0xA000, 0xBFFF) && RamBankEnabled && !RamBanks.empty())
 		return RamBanks[(ActiveRomRamBank.GetRamBank() * 0x2000) + (address - 0xA000)];
 
 	return Memory[address];
@@ -602,13 +572,13 @@ uint8_t GameBoy::MBC3Read(const uint16_t& address)
 {
 	if (InRange(address, 0x0000, 0x3FFF))
 	{
-		std::cout << "reading from rom bank 1" << std::endl;
+		//std::cout << "reading from rom bank 1" << std::endl;
 		return Rom[address];
 	}
 
 	if (InRange(address, 0x4000, 0x7FFF))
 	{
-		std::cout << "reading from switchable rom bank" << std::endl;
+		//std::cout << "reading from switchable rom bank" << std::endl;
 
 		const uint16_t address_into_bank = address - 0x4000;
 		const uint16_t bank_offset = 0x4000 * ActiveRomRamBank.GetRomBank();
@@ -619,7 +589,7 @@ uint8_t GameBoy::MBC3Read(const uint16_t& address)
 	if (InRange(address, 0xA000, 0xBFFF) &&
 		RamOverRtc)
 	{
-		std::cout << "reading from RAM" << std::endl;
+		//std::cout << "reading from RAM" << std::endl;
 
 		const uint16_t address_into_bank = address - 0xA000;
 		const uint16_t bank_offset = 0x8000 * ActiveRomRamBank.GetRamBank();

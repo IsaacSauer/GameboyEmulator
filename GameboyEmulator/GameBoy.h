@@ -248,6 +248,9 @@ private:
 	void MBC3Write(const uint16_t& address, const uint8_t byte);
 	uint8_t MBC3Read(const uint16_t& address);
 
+	void MBC5Write(const uint16_t& address, const uint8_t byte);
+	uint8_t MBC5Read(const uint16_t& address);
+
 	void SwitchRomBank(uint8_t bank);
 	void SwitchRamBank(uint8_t bank);
 };

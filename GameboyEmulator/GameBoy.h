@@ -44,7 +44,7 @@ public:
 
 	void TestCPU();
 	void Disassemble();
-	void AssignDrawCallback(const std::function<void(const FrameBuffer&)>& _vblank_callback);
+	void AssignDrawCallback(const std::function<void(const std::vector<uint16_t>&)>& _vblank_callback);
 
 	/**
 	 * \brief Provides access to the raw memory array

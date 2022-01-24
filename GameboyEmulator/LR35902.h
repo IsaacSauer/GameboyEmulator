@@ -7,7 +7,7 @@
 #include <atomic>
 
 #include "opc_test\tester.h"
-#include "Tile.h"
+#include "FrameBuffer.h"
 
 class GameBoy;
 struct state;
@@ -756,7 +756,7 @@ public:
 	//All rights reserved.
 	//Source: https://github.com/jgilchrist/gbemu/blob/master/src
 public:
-	using vblank_callback_t = std::function<void(const FrameBuffer&)>;
+	using vblank_callback_t = std::function<void(const std::vector<uint16_t>&)>;
 
 	void register_vblank_callback(const vblank_callback_t& _vblank_callback);
 

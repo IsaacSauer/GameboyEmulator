@@ -392,39 +392,37 @@ void GameBoy::HandleTimers(const unsigned stepCycles, const unsigned cycleBudget
 		++DIVTimer;
 	}
 
-	if (TACTimer & 0x4)
-	{
-		TIMACycles += stepCycles;
-
-		unsigned int threshold{};
-		switch (TACTimer & 0x3)
-		{
-		case 0:
-			threshold = cycleBudget / 4096;
-			break;
-		case 1:
-			threshold = cycleBudget / 262144;
-			break;
-		case 2:
-			threshold = cycleBudget / 65536;
-			break;
-		case 3:
-			threshold = cycleBudget / 16384;
-			break;
-		default:
-			assert(true);
-		}
-
-		while (threshold != 0 && TIMACycles >= threshold)
-		{
-			if (!++TIMATimer)
-			{
-				TIMATimer = TMATimer;
-				GetIF() |= 0x4;
-			}
-			TIMACycles -= threshold; //threshold == 0??
-		}
-	}
+	//if (TACTimer & 0x4)
+	//{
+	//	TIMACycles += stepCycles;
+	//	unsigned int threshold{};
+	//	switch (TACTimer & 0x3)
+	//	{
+	//	case 0:
+	//		threshold = cycleBudget / 4096;
+	//		break;
+	//	case 1:
+	//		threshold = cycleBudget / 262144;
+	//		break;
+	//	case 2:
+	//		threshold = cycleBudget / 65536;
+	//		break;
+	//	case 3:
+	//		threshold = cycleBudget / 16384;
+	//		break;
+	//	default:
+	//		assert(true);
+	//	}
+	//	while (threshold != 0 && TIMACycles >= threshold)
+	//	{
+	//		if (!++TIMATimer)
+	//		{
+	//			TIMATimer = TMATimer;
+	//			GetIF() |= 0x4;
+	//		}
+	//		TIMACycles -= threshold; //threshold == 0??
+	//	}
+	//}
 }
 
 uint8_t GameBoy::GetJoypadState() const

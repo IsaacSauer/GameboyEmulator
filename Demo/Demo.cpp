@@ -4,7 +4,6 @@
 
 #include "../GameboyEmulator/Emulator.h"
 #include "nfd\include\FileDialog.h"
-#include "../GameboyEmulator/Tile.h"
 #include "../GameboyEmulator/GameBoy.h"
 
 #include "SDL.h"
@@ -104,13 +103,10 @@ void CraftPixelBuffer(const uint8_t instance, uint16_t* buffer, const gbee::Emul
 	}
 }
 
-void VBlankCallback(const FrameBuffer& buffer)
+void VBlankCallback(const std::vector<uint16_t>& buffer)
 {
 	if (rendr)
-	{
-		//MAKE BUFFER
-		frameBuffer = buffer.GetBuffer();
-	}
+		frameBuffer = buffer;
 }
 
 void Update(gbee::Emulator& emu)

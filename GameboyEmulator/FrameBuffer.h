@@ -14,7 +14,7 @@ struct TileInfo
 	uint8_t line;
 	std::vector<uint8_t> pixels;
 };
-enum class GBColor
+enum class GBColor : uint8_t
 {
 	Color0, /* White */
 	Color1, /* Light gray */
@@ -50,19 +50,6 @@ const Address TILE_MAP_ONE_ADDRESS = 0x9C00;
 const unsigned int TILE_BYTES = 2 * 8;
 
 const unsigned int SPRITE_BYTES = 4;
-
-class Tile {
-public:
-    Tile(Address& address, GameBoy& mmu, unsigned int size_multiplier = 1);
-
-    auto get_pixel(unsigned int x, unsigned int y) const->GBColor;
-
-private:
-    static inline auto pixel_index(unsigned int x, unsigned int y)->unsigned int;
-    static inline auto get_pixel_line(uint8_t byte1, uint8_t byte2)->uint8_t*;
-
-	GBColor buffer[TILE_HEIGHT_PX * 2 * TILE_WIDTH_PX]{};
-};
 
 GBColor GetColor(uint8_t pixel_value);
 

@@ -25,7 +25,7 @@ namespace gbee
 		void LoadGame(const std::string& gbFile) const;
 		void Start();
 		void Stop();
-		void AssignDrawCallback(const std::function<void(const FrameBuffer&)>&& _vblank_callback);
+		void AssignDrawCallback(const std::function<void(const std::vector<uint16_t>&)>&& _vblank_callback);
 		void Reset();
 		void TestCPU() const;
 

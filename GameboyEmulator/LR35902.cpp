@@ -14,7 +14,6 @@
 #include "opc_test/disassembler.h"
 #include "bitwise.h"
 #include "Register.h"
-#include "Tile.h"
 
 static int cycles_per_instruction[] = {
 	/* 0   1   2   3   4   5   6   7   8   9   a   b   c   d   e   f       */
@@ -301,7 +300,7 @@ void LR35902::HandleGraphics(const unsigned cycles, const unsigned cycleBudget, 
 			if (Gameboy.GetLY() > 153)
 			{
 				Gameboy.GetLY() = 0;
-				vblank_callback(buffer);
+				vblank_callback(buffer.GetBuffer());
 			}
 			if (dirtyLY < 144 && draw)
 			{
@@ -2174,20 +2173,24 @@ void LR35902::DrawSprite(unsigned int spriteN)
 
 	Address pattern_address = tile_set_location + tile_offset;
 
-	Tile tile(pattern_address, Gameboy, sprite_size_multiplier);
 	int start_y = sprite_y - 16;
 	int start_x = sprite_x - 8;
 
-#pragma loop( hint_parallel( 40 ) )
+#pragma loop( hint_parallel( 0 ) )
 	for (unsigned int y = 0; y < TILE_HEIGHT_PX * sprite_size_multiplier; y++)
 	{
-#pragma loop( hint_parallel( 40 ) )
+#pragma loop( hint_parallel( 0 ) )
 		for (unsigned int x = 0; x < TILE_WIDTH_PX; x++)
 		{
 			unsigned int maybe_flipped_y = !flip_y ? y : (TILE_HEIGHT_PX * sprite_size_multiplier) - y - 1;
 			unsigned int maybe_flipped_x = !flip_x ? x : TILE_WIDTH_PX - x - 1;
 
-			GBColor gb_color = tile.get_pixel(maybe_flipped_x, maybe_flipped_y);
+			unsigned int index_into_tile = 2 * maybe_flipped_y;
+			Address line_start = pattern_address + index_into_tile;
+			u8 pixels_1 = Gameboy.ReadMemory(line_start.value());
+			u8 pixels_2 = Gameboy.ReadMemory(line_start.value() + 1);
+			uint8_t color_value = static_cast<uint8_t>((((pixels_2 >> (7 - maybe_flipped_x)) & 1) << 1) | ((pixels_1 >> (7 - maybe_flipped_x)) & 1));
+			GBColor gb_color{ color_value };
 
 			// Color 0 is transparent
 			if (gb_color == GBColor::Color0) { continue; }

@@ -32,7 +32,7 @@ void gbee::Emulator::Stop()
 	Instances[0].SetRunningVariable(false);
 }
 
-void gbee::Emulator::AssignDrawCallback(const std::function<void(const FrameBuffer&)>&& _vblank_callback)
+void gbee::Emulator::AssignDrawCallback(const std::function<void(const std::vector<uint16_t>&)>&& _vblank_callback)
 {
 	Instances[0].AssignDrawCallback(_vblank_callback);
 }

@@ -5,7 +5,7 @@
 #include <time.h>
 #include "opc_test/disassembler.h"
 #include "CartridgeInfo.h"
-#include "Tile.h"
+#include "FrameBuffer.h"
 #include "Measure.h"
 
 GameBoy::GameBoy(const std::string& gameFile)
@@ -91,8 +91,17 @@ void GameBoy::Update()
 
 	clock_t lastValidTick{ clock() / (CLOCKS_PER_SEC / 1000) };
 
+	//Measure timer{ "Update" };
+	//std::ofstream outputStream;
+	//outputStream.open("measures.txt");
+
 	while (IsRunning)
 	{
+		//uint16_t speedMul{ SpeedMultiplier };
+		//bool timing = false;
+		//if ((timing = speedMul > 1))
+		//	timer.Start();
+
 		const clock_t currentTicks = { clock() / (CLOCKS_PER_SEC / 1000) };
 		//I'm keeping fps in mind to ensure a smooth simulation, if we make the cyclebudget infinite, we have 0 control
 		if (!IsPaused && static_cast<float>(lastValidTick) + timeAdded < static_cast<float>(currentTicks))
@@ -138,7 +147,16 @@ void GameBoy::Update()
 			}
 			idle = true;
 		}
+
+		//if (timing)
+		//{
+		//	auto ms = timer.Stop();
+		//	if (ms > 1000)
+		//		outputStream << "SpeedMultiplier: " << speedMul << " took " << ms << " ms.\n";
+		//}
 	}
+
+	//outputStream.close();
 }
 
 GameHeader GameBoy::ReadHeader()
@@ -233,7 +251,7 @@ void GameBoy::Disassemble()
 	ofile.close();
 }
 
-void GameBoy::AssignDrawCallback(const std::function<void(const FrameBuffer&)>& _vblank_callback)
+void GameBoy::AssignDrawCallback(const std::function<void(const std::vector<uint16_t>&)>& _vblank_callback)
 {
 	Cpu.register_vblank_callback(_vblank_callback);
 }
@@ -566,7 +584,6 @@ void GameBoy::MBC5Write(const uint16_t& address, const uint8_t byte)
 
 	if (InRange(address, 0x3000, 0x3FFF))
 	{
-
 	}
 
 	if (InRange(address, 0x4000, 0x5FFF))

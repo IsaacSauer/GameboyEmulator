@@ -88,7 +88,7 @@ public:
 	bool HandleInterrupt(u8 interrupt_bit, u16 interrupt_vector, u8 fired_interrupts);
 	void HandleGraphics(const unsigned cycles, const unsigned cycleBudget = 0, const bool draw = true) noexcept;
 
-	bool GetHalted() { return Halted; }
+	bool GetHalted() { return m_Halted; }
 private:
 	struct DrawData
 	{
@@ -622,16 +622,16 @@ private:
 	};
 #endif
 
-	uint8_t m_opcode;
-	bool Halted = false;
+	uint8_t m_Opcode;
+	bool m_Halted = false;
 
-	Registers Register{};
-	std::thread DrawThreads[10];
-	GameBoy& Gameboy;
-	unsigned int LCDCycles{};
+	Registers m_Register{};
+	std::thread m_DrawThreads[10];
+	GameBoy& m_Gameboy;
+	unsigned int m_LCDCycles{};
 
-	bool InteruptsEnabled{ false }; ///< InteruptsMasterEnable
-	bool InteruptChangePending{ false }; ///< When an interupt change is requested, it gets pushed after the next opcode\note lsb==Disable, msb==Enable
+	bool m_InteruptsEnabled{ false }; ///< InteruptsMasterEnable
+	bool m_InteruptChangePending{ false }; ///< When an interupt change is requested, it gets pushed after the next opcode\note lsb==Disable, msb==Enable
 
 	uint8_t ExecuteOpcode();
 	uint8_t ExecuteOpcodeCB();
@@ -760,26 +760,26 @@ public:
 
 	void register_vblank_callback(const vblank_callback_t& _vblank_callback);
 
-	ByteRegister scroll_y{};
-	ByteRegister scroll_x{};
+	ByteRegister m_ScrollY{};
+	ByteRegister m_ScrollX{};
 
 	/* LCDC Y-coordinate */
-	ByteRegister ly_compare{};
+	ByteRegister m_LyCompare{};
 
-	ByteRegister window_y{};
-	ByteRegister window_x{}; /* Note: x - 7 */
+	ByteRegister m_WindowY{};
+	ByteRegister m_WindowX{}; /* Note: x - 7 */
 
-	ByteRegister bg_palette{};
-	ByteRegister sprite_palette_0{}; /* OBP0 */
-	ByteRegister sprite_palette_1{}; /* OBP1 */
+	ByteRegister m_BgPalette{};
+	ByteRegister m_SpritePalette0{}; /* OBP0 */
+	ByteRegister m_SpritePalette1{}; /* OBP1 */
 
 	/* TODO: LCD Color Palettes (CGB) */
 	/* TODO: LCD VRAM Bank (CGB) */
 
-	ByteRegister dma_transfer{}; /* DMA */
-	FrameBuffer& GetBuffer() { return buffer; }
+	ByteRegister m_DmaTransfer{}; /* DMA */
+	FrameBuffer& GetBuffer() { return m_Buffer; }
 
-	Palette gb_palette{};
+	Palette m_GbPalette{};
 	static void SetColor(Color& col, float* newCol);
 
 private:
@@ -812,12 +812,12 @@ private:
 	static Palette LoadPalette(ByteRegister& palette_register);
 	Color GetColorFromPalette(GBColor color, const Palette& palette);
 
-	FrameBuffer buffer;
-	FrameBuffer background_map;
+	FrameBuffer m_Buffer;
+	FrameBuffer m_BackgroundMap;
 
-	VideoMode current_mode = VideoMode::ACCESS_OAM;
+	VideoMode m_CurrentMode = VideoMode::ACCESS_OAM;
 
-	vblank_callback_t vblank_callback;
+	vblank_callback_t m_VBlankCallback;
 
 #pragma endregion
 };

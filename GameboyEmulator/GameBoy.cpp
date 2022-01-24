@@ -17,35 +17,35 @@ GameBoy::GameBoy(const std::string& gameFile)
 //values of banks needed / size etc retrieved from https://gbdev.gg8.se/wiki/articles/The_Cartridge_Header#0149_-_RAM_Size
 void GameBoy::LoadGame(const std::string& gbFile)
 {
-	fileName = gbFile;
+	m_FileName = gbFile;
 
-	std::ifstream file{ fileName, std::ios::binary };
+	std::ifstream file{ m_FileName, std::ios::binary };
 	assert(file.good());
 
 	file.seekg(0, std::ios::end);
 	const std::ifstream::pos_type size{ file.tellg() };
 	std::cout << "rom size: " << size << std::endl;
-	Rom.resize(size, 0);
+	m_Rom.resize(size, 0);
 
 	file.seekg(0, std::ios::beg);
-	file.read(reinterpret_cast<char*>(Rom.data()), size);
+	file.read(reinterpret_cast<char*>(m_Rom.data()), size);
 
 	file.close();
 
 	////Disassmble required opcodes to txt file
 	//Disassemble();
 
-	auto cartridge = get_info(Rom);
+	auto cartridge = get_info(m_Rom);
 	const GameHeader header{ ReadHeader() };
-	Mbc = header.mbc;
+	m_Mbc = header.mbc;
 
 	std::cout << "title of game: " << header.title << std::endl;
 
 	std::cout << "ram size: " << std::to_string(header.ramSizeValue) << std::endl;
 
-	std::cout << "actual rom size: " << std::to_string(Rom[0x0148]) << std::endl;
+	std::cout << "actual rom size: " << std::to_string(m_Rom[0x0148]) << std::endl;
 
-	RamBankEnabled = header.ramSizeValue;
+	m_RamBankEnabled = header.ramSizeValue;
 
 	int numberOfBanks{};
 	switch (header.ramSizeValue)
@@ -73,10 +73,10 @@ void GameBoy::LoadGame(const std::string& gbFile)
 		break;
 	}
 
-	RamBanks.resize(numberOfBanks * 0x8000);
+	m_RamBanks.resize(numberOfBanks * 0x8000);
 
-	std::cout << "memory bank: " << std::to_string(Mbc) << std::endl;
-	Cpu.Reset();
+	std::cout << "memory bank: " << std::to_string(m_Mbc) << std::endl;
+	m_Cpu.Reset();
 }
 
 void GameBoy::Update()
@@ -91,81 +91,69 @@ void GameBoy::Update()
 
 	clock_t lastValidTick{ clock() / (CLOCKS_PER_SEC / 1000) };
 
-	//Measure timer{ "Update" };
-	//std::ofstream outputStream;
-	//outputStream.open("measures.txt");
+	Measure timer{ "Update" };
+	std::ofstream outputStream;
+	outputStream.open("measures.txt");
 
-	while (IsRunning)
+	while (m_IsRunning)
 	{
-		//uint16_t speedMul{ SpeedMultiplier };
-		//bool timing = false;
-		//if ((timing = speedMul > 1))
-		//	timer.Start();
-
 		const clock_t currentTicks = { clock() / (CLOCKS_PER_SEC / 1000) };
 		//I'm keeping fps in mind to ensure a smooth simulation, if we make the cyclebudget infinite, we have 0 control
-		if (!IsPaused && static_cast<float>(lastValidTick) + timeAdded < static_cast<float>(currentTicks))
+		if (!m_IsPaused && static_cast<float>(lastValidTick) + timeAdded < static_cast<float>(currentTicks))
 		{
-			if (AutoSpeed && static_cast<float>(currentTicks) - (static_cast<float>(lastValidTick) + timeAdded) >= .5f && SpeedMultiplier >= 2)
+			if (m_AutoSpeed && static_cast<float>(currentTicks) - (static_cast<float>(lastValidTick) + timeAdded) >= .5f && m_SpeedMultiplier >= 2)
 			{
-				--SpeedMultiplier;
+				--m_SpeedMultiplier;
 			}
-			CurrentCycles = 0;
+			m_CurrentCycles = 0;
 			//4194304 cycles can be done in a second (standard gameboy)
-			const unsigned int cycleBudget{ static_cast<unsigned>(ceil(4194304.0f / fps)) * SpeedMultiplier };
-			while (IsRunning && !IsPaused && CurrentCycles < cycleBudget)
+			const unsigned int cycleBudget{ static_cast<unsigned>(ceil(4194304.0f / fps)) * m_SpeedMultiplier };
+			while (m_IsRunning && !m_IsPaused && m_CurrentCycles < cycleBudget)
 			{
-				unsigned int stepCycles{ CurrentCycles };
-				Cpu.ExecuteNextOpcode();
-				stepCycles = CurrentCycles - stepCycles;
+				unsigned int stepCycles{ m_CurrentCycles };
+				m_Cpu.ExecuteNextOpcode();
+				stepCycles = m_CurrentCycles - stepCycles;
 				//If we're cycle bound, subtract cycles and call pause if needed
-				if (IsCycleFrameBound & 2 && (CyclesFramesToRun - stepCycles > CyclesFramesToRun || !(CyclesFramesToRun -= stepCycles)))
+				if (m_IsCycleFrameBound & 2 && (m_CyclesFramesToRun - stepCycles > m_CyclesFramesToRun || !(m_CyclesFramesToRun -= stepCycles)))
 				{
-					IsCycleFrameBound = 0;
-					IsPaused = true;
+					m_IsCycleFrameBound = 0;
+					m_IsPaused = true;
 				}
 				HandleTimers(stepCycles, cycleBudget);
 				//Draw if we don't care, are not frame bound or are on the final frame
-				Cpu.HandleGraphics(stepCycles, cycleBudget,
-					!OnlyDrawLast || !(IsCycleFrameBound & 1) || IsCycleFrameBound & 1 && CyclesFramesToRun == 1);
+				m_Cpu.HandleGraphics(stepCycles, cycleBudget,
+					!m_OnlyDrawLast || !(m_IsCycleFrameBound & 1) || m_IsCycleFrameBound & 1 && m_CyclesFramesToRun == 1);
 				//If vblank interrupt and we're frame bound, subtract frames and call pause if needed
-				if (GetIF() & 1 && IsCycleFrameBound & 1 && !--CyclesFramesToRun)
+				if (GetIF() & 1 && m_IsCycleFrameBound & 1 && !--m_CyclesFramesToRun)
 				{
-					IsCycleFrameBound = 0;
-					IsPaused = true;
+					m_IsCycleFrameBound = 0;
+					m_IsPaused = true;
 				}
-				Cpu.HandleInterupts();
+				m_Cpu.HandleInterupts();
 			}
 			lastValidTick = currentTicks;
 			idle = false;
 		}
 		else if (!idle)
 		{
-			if (AutoSpeed && static_cast<float>(lastValidTick) + timeAdded - static_cast<float>(currentTicks) >= .5f)
+			if (m_AutoSpeed && static_cast<float>(lastValidTick) + timeAdded - static_cast<float>(currentTicks) >= .5f)
 			{
-				++SpeedMultiplier;
+				++m_SpeedMultiplier;
 			}
 			idle = true;
 		}
-
-		//if (timing)
-		//{
-		//	auto ms = timer.Stop();
-		//	if (ms > 1000)
-		//		outputStream << "SpeedMultiplier: " << speedMul << " took " << ms << " ms.\n";
-		//}
 	}
 
-	//outputStream.close();
+	outputStream.close();
 }
 
 GameHeader GameBoy::ReadHeader()
 {
 	GameHeader header{};
-	memcpy(header.title, static_cast<void*>(Rom.data() + 0x134), 16);
+	memcpy(header.title, static_cast<void*>(m_Rom.data() + 0x134), 16);
 
 	//Set MBC chip version
-	switch (Rom[0x147])
+	switch (m_Rom[0x147])
 	{
 	case 0x00:
 	case 0x08:
@@ -220,10 +208,10 @@ GameHeader GameBoy::ReadHeader()
 		break;
 
 	default:
-		assert(Rom[0x147] == 0x0); //if not 0x0 it's undocumented
+		assert(m_Rom[0x147] == 0x0); //if not 0x0 it's undocumented
 	}
 
-	header.ramSizeValue = Rom[header::ram_size];
+	header.ramSizeValue = m_Rom[header::ram_size];
 
 	return header;
 }
@@ -231,7 +219,7 @@ GameHeader GameBoy::ReadHeader()
 void GameBoy::TestCPU()
 {
 	m_TestingOpcodes = true;
-	Cpu.TestCPU();
+	m_Cpu.TestCPU();
 	m_TestingOpcodes = false;
 }
 
@@ -239,13 +227,13 @@ void GameBoy::Disassemble()
 {
 	//disassemble
 	std::vector<std::string> opcodes{};
-	for (int i{}; i < Rom.size(); ++i)
-		disassemble(Rom.data() + i, opcodes);
+	for (int i{}; i < m_Rom.size(); ++i)
+		disassemble(m_Rom.data() + i, opcodes);
 	//distinct
 	std::sort(opcodes.begin(), opcodes.end());
 	opcodes.erase(std::unique(opcodes.begin(), opcodes.end()), opcodes.end());
 	//write to file
-	std::ofstream ofile{ fileName + "_opcodes.txt" };
+	std::ofstream ofile{ m_FileName + "_opcodes.txt" };
 	for (auto code : opcodes)
 		ofile << code << '\n';
 	ofile.close();
@@ -253,13 +241,13 @@ void GameBoy::Disassemble()
 
 void GameBoy::AssignDrawCallback(const std::function<void(const std::vector<uint16_t>&)>& _vblank_callback)
 {
-	Cpu.register_vblank_callback(_vblank_callback);
+	m_Cpu.register_vblank_callback(_vblank_callback);
 }
 
 uint8_t GameBoy::ReadMemory(const uint16_t pos)
 {
 	if (m_TestingOpcodes)
-		return (uint8_t)Cpu.mmu_read(pos);
+		return (uint8_t)m_Cpu.mmu_read(pos);
 
 	if (InRange(pos, 0x0, 0x7FFF) || //ROM bank
 		InRange(pos, 0xA000, 0xBFFF)) //RAM Bank
@@ -268,14 +256,14 @@ uint8_t GameBoy::ReadMemory(const uint16_t pos)
 	if (pos == 0xFF00) //Input
 		return GetJoypadState();
 
-	return Memory[pos];
+	return m_Memory[pos];
 }
 
 uint16_t GameBoy::ReadMemoryWord(uint16_t& pos)
 {
 	if (m_TestingOpcodes)
 	{
-		const uint16_t res{ static_cast<uint16_t>(static_cast<uint16_t>(Cpu.mmu_read(pos)) | static_cast<uint16_t>(Cpu.mmu_read(pos + 1)) << 8) };
+		const uint16_t res{ static_cast<uint16_t>(static_cast<uint16_t>(m_Cpu.mmu_read(pos)) | static_cast<uint16_t>(m_Cpu.mmu_read(pos + 1)) << 8) };
 		pos += 2;
 		return res;
 	}
@@ -289,7 +277,7 @@ void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 {
 	if (m_TestingOpcodes)
 	{
-		Cpu.mmu_write(address, data);
+		m_Cpu.mmu_write(address, data);
 		return;
 	}
 
@@ -309,22 +297,22 @@ void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 
 	if (InRange(address, static_cast<uint16_t>(0xC000), static_cast<uint16_t>(0xDFFF))) //Internal RAM
 	{
-		Memory[address] = data;
+		m_Memory[address] = data;
 		return;
 	}
 
 	if (address == 0xFF04) //Reset DIV
 	{
-		DIVTimer = 0;
-		DivCycles = 0;
+		m_DIVTimer = 0;
+		m_DivCycles = 0;
 	}
 	else if (address == 0xFF07) //Set timer Clock speed
 	{
-		TACTimer = data & 0x7;
+		m_TACTimer = data & 0x7;
 	}
 	else if (address == 0xFF44)  //Horizontal scanline reset
 	{
-		Memory[address] = 0;
+		m_Memory[address] = 0;
 	}
 	else if (address == 0xFF46)  //DMA transfer
 	{
@@ -333,15 +321,15 @@ void GameBoy::WriteMemory(uint16_t address, uint8_t data)
 			WriteMemory(static_cast<uint16_t>(0xFE00 + i), ReadMemory(static_cast<uint16_t>(src + i)));
 	}
 	else
-		Memory[address] = data;
+		m_Memory[address] = data;
 }
 
 void GameBoy::WriteMemoryWord(const uint16_t pos, const uint16_t value)
 {
 	if (m_TestingOpcodes)
 	{
-		Cpu.mmu_write(pos, value & 0xFF);
-		Cpu.mmu_write(pos + 1, value >> 8);
+		m_Cpu.mmu_write(pos, value & 0xFF);
+		m_Cpu.mmu_write(pos + 1, value >> 8);
 		return;
 	}
 
@@ -358,40 +346,40 @@ void GameBoy::SetKey(const Key key, const bool pressed)
 {
 	if (pressed)
 	{
-		const uint8_t oldJoyPad{ JoyPadState };
-		JoyPadState &= ~(1 << key);
+		const uint8_t oldJoyPad{ m_JoyPadState };
+		m_JoyPadState &= ~(1 << key);
 
 		//Previosuly 1
 		if (oldJoyPad & 1 << key)
 		{
-			if (!(Memory[0xff00] & 0x20) && !(key + 1 % 2)) //Button Keys
+			if (!(m_Memory[0xff00] & 0x20) && !(key + 1 % 2)) //Button Keys
 				RequestInterrupt(joypad);
-			else if (!(Memory[0xff00] & 0x10) && !(key % 2)) //Directional keys
+			else if (!(m_Memory[0xff00] & 0x10) && !(key % 2)) //Directional keys
 				RequestInterrupt(joypad);
 		}
 	}
 	else
-		JoyPadState |= (1 << key);
+		m_JoyPadState |= (1 << key);
 }
 
 void GameBoy::SetColor0(float* color)
 {
-	Cpu.SetColor(Cpu.gb_palette.color0, color);
+	m_Cpu.SetColor(m_Cpu.m_GbPalette.color0, color);
 }
 
 void GameBoy::SetColor1(float* color)
 {
-	Cpu.SetColor(Cpu.gb_palette.color1, color);
+	m_Cpu.SetColor(m_Cpu.m_GbPalette.color1, color);
 }
 
 void GameBoy::SetColor2(float* color)
 {
-	Cpu.SetColor(Cpu.gb_palette.color2, color);
+	m_Cpu.SetColor(m_Cpu.m_GbPalette.color2, color);
 }
 
 void GameBoy::SetColor3(float* color)
 {
-	Cpu.SetColor(Cpu.gb_palette.color3, color);
+	m_Cpu.SetColor(m_Cpu.m_GbPalette.color3, color);
 }
 
 void GameBoy::HandleTimers(const unsigned stepCycles, const unsigned cycleBudget)
@@ -404,10 +392,10 @@ void GameBoy::HandleTimers(const unsigned stepCycles, const unsigned cycleBudget
 	const unsigned cyclesOneDiv{ (cycleBudget / 16384) };
 
 	//TODO: turn this into a while loop
-	if ((DivCycles += stepCycles) >= cyclesOneDiv)
+	if ((m_DivCycles += stepCycles) >= cyclesOneDiv)
 	{
-		DivCycles -= cyclesOneDiv;
-		++DIVTimer;
+		m_DivCycles -= cyclesOneDiv;
+		++m_DIVTimer;
 	}
 
 	//if (TACTimer & 0x4)
@@ -445,35 +433,35 @@ void GameBoy::HandleTimers(const unsigned stepCycles, const unsigned cycleBudget
 
 uint8_t GameBoy::GetJoypadState() const
 {
-	uint8_t res{ Memory[0xff00] };
+	uint8_t res{ m_Memory[0xff00] };
 
 	//Button keys
 	if (!(res & 0x20))
 	{
-		res |= !!(JoyPadState & 1 << aButton);
-		res |= !!(JoyPadState & 1 << bButton) << 1;
-		res |= !!(JoyPadState & 1 << select) << 2;
-		res |= !!(JoyPadState & 1 << start) << 3;
+		res |= !!(m_JoyPadState & 1 << aButton);
+		res |= !!(m_JoyPadState & 1 << bButton) << 1;
+		res |= !!(m_JoyPadState & 1 << select) << 2;
+		res |= !!(m_JoyPadState & 1 << start) << 3;
 	}
 	else if (!(res & 0x10))
 	{
-		res |= !!(JoyPadState & 1 << right);
-		res |= !!(JoyPadState & 1 << left) << 1;
-		res |= !!(JoyPadState & 1 << up) << 2;
-		res |= !!(JoyPadState & 1 << down) << 3;
+		res |= !!(m_JoyPadState & 1 << right);
+		res |= !!(m_JoyPadState & 1 << left) << 1;
+		res |= !!(m_JoyPadState & 1 << up) << 2;
+		res |= !!(m_JoyPadState & 1 << down) << 3;
 	}
 	return res;
 }
 
 void GameBoy::MBCNoneWrite(const uint16_t& address, const uint8_t byte)
 {
-	Memory[address] = byte;
+	m_Memory[address] = byte;
 }
 
 void GameBoy::MBC1Write(const uint16_t& address, const uint8_t byte)
 {
 	if (InRange(address, 0x0000, 0x1FFF))
-		RamBankEnabled = true;
+		m_RamBankEnabled = true;
 
 	if (InRange(address, 0x2000, 0x3FFF))
 	{
@@ -495,11 +483,11 @@ void GameBoy::MBC1Write(const uint16_t& address, const uint8_t byte)
 
 	if (InRange(address, 0xA000, 0xBFFF))
 	{
-		if (!RamBankEnabled || RamBanks.empty()) { return; }
+		if (!m_RamBankEnabled || m_RamBanks.empty()) { return; }
 
 		auto offset_into_ram = 0x8000 * ActiveRomRamBank.GetRamBank();
 		auto address_in_ram = (address - 0xA000) + offset_into_ram;
-		RamBanks[address_in_ram] = byte;
+		m_RamBanks[address_in_ram] = byte;
 	}
 }
 
@@ -510,10 +498,10 @@ void GameBoy::MBC3Write(const uint16_t& address, const uint8_t byte)
 		//std::cout << "toggling ram bank enable" << std::endl;
 
 		if (byte == 0x0A)
-			RamBankEnabled = true;
+			m_RamBankEnabled = true;
 
 		if (byte == 0x00)
-			RamBankEnabled = false;
+			m_RamBankEnabled = false;
 	}
 
 	if (InRange(address, 0x2000, 0x3FFF))
@@ -537,26 +525,26 @@ void GameBoy::MBC3Write(const uint16_t& address, const uint8_t byte)
 
 		if (byte <= 0x03)
 		{
-			RamOverRtc = true;
+			m_RamOverRtc = true;
 			SwitchRamBank(byte);
 		}
 
 		if (byte >= 0x08 && byte <= 0xC)
-			RamOverRtc = false;
+			m_RamOverRtc = false;
 	}
 
 	if (InRange(address, 0xA000, 0xBFFF))
 	{
 		//std::cout << "writing to RAM" << std::endl;
 
-		if (!RamBankEnabled) { return; }
+		if (!m_RamBankEnabled) { return; }
 
-		if (RamOverRtc)
+		if (m_RamOverRtc)
 		{
 			auto offset_into_ram = 0x2000 * ActiveRomRamBank.ramBank;
 			//auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
 			auto address_in_ram = (address - 0xA000) + offset_into_ram;
-			RamBanks[address_in_ram] = byte;
+			m_RamBanks[address_in_ram] = byte;
 		}
 	}
 }
@@ -568,10 +556,10 @@ void GameBoy::MBC5Write(const uint16_t& address, const uint8_t byte)
 		//std::cout << "toggling ram bank enable" << std::endl;
 
 		if (byte == 0x0A)
-			RamBankEnabled = true;
+			m_RamBankEnabled = true;
 
 		if (byte == 0x00)
-			RamBankEnabled = false;
+			m_RamBankEnabled = false;
 	}
 
 	if (InRange(address, 0x2000, 0x2FFF))
@@ -591,19 +579,19 @@ void GameBoy::MBC5Write(const uint16_t& address, const uint8_t byte)
 
 	if (InRange(address, 0xA000, 0xBFFF))
 	{
-		if (!RamBankEnabled || RamBanks.empty()) { return; }
+		if (!m_RamBankEnabled || m_RamBanks.empty()) { return; }
 
 		auto offset_into_ram = 0x2000 * ActiveRomRamBank.ramBank;
 		//auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
 		auto address_in_ram = (address - 0xA000) + offset_into_ram;
-		RamBanks[address_in_ram] = byte;
+		m_RamBanks[address_in_ram] = byte;
 	}
 }
 
 uint8_t GameBoy::MBCNoneRead(const uint16_t& address)
 {
-	if (address < Rom.size())
-		return Rom[address];
+	if (address < m_Rom.size())
+		return m_Rom[address];
 
 	return 0;
 }
@@ -611,16 +599,16 @@ uint8_t GameBoy::MBCNoneRead(const uint16_t& address)
 uint8_t GameBoy::MBC1Read(const uint16_t& address)
 {
 	if (InRange(address, 0x0000, 0x3FFF))
-		return Rom[address];
+		return m_Rom[address];
 
 	auto idx = address + ((ActiveRomRamBank.GetRomBank() - 1) * 0x4000);
-	if (InRange(address, 0x4000, 0x7FFF) && Rom.size() > idx)
-		return Rom[idx];
+	if (InRange(address, 0x4000, 0x7FFF) && m_Rom.size() > idx)
+		return m_Rom[idx];
 
-	if (InRange(address, 0xA000, 0xBFFF) && RamBankEnabled && !RamBanks.empty())
-		return RamBanks[(ActiveRomRamBank.GetRamBank() * 0x8000) + (address - 0xA000)];
+	if (InRange(address, 0xA000, 0xBFFF) && m_RamBankEnabled && !m_RamBanks.empty())
+		return m_RamBanks[(ActiveRomRamBank.GetRamBank() * 0x8000) + (address - 0xA000)];
 
-	return Memory[address];
+	return m_Memory[address];
 }
 
 uint8_t GameBoy::MBC3Read(const uint16_t& address)
@@ -628,7 +616,7 @@ uint8_t GameBoy::MBC3Read(const uint16_t& address)
 	if (InRange(address, 0x0000, 0x3FFF))
 	{
 		//std::cout << "reading from rom bank 0" << std::endl;
-		return Rom[address];
+		return m_Rom[address];
 	}
 
 	if (InRange(address, 0x4000, 0x7FFF))
@@ -638,21 +626,21 @@ uint8_t GameBoy::MBC3Read(const uint16_t& address)
 		const uint16_t address_into_bank = address - 0x4000;
 		const uint16_t bank_offset = 0x4000 * ActiveRomRamBank.GetRomBank();
 		const uint16_t address_in_rom = bank_offset + address_into_bank;
-		return Rom[address_in_rom];
+		return m_Rom[address_in_rom];
 	}
 
 	if (InRange(address, 0xA000, 0xBFFF) &&
-		RamOverRtc)
+		m_RamOverRtc)
 	{
 		//std::cout << "reading from RAM" << std::endl;
 
 		const uint16_t address_into_bank = address - 0xA000;
 		const uint16_t bank_offset = 0x8000 * ActiveRomRamBank.GetRamBank();
 		const uint16_t address_in_ram = bank_offset + address_into_bank;
-		return RamBanks[address_in_ram];
+		return m_RamBanks[address_in_ram];
 	}
 
-	return Memory[address];
+	return m_Memory[address];
 }
 
 uint8_t GameBoy::MBC5Read(const uint16_t& address)
@@ -660,12 +648,12 @@ uint8_t GameBoy::MBC5Read(const uint16_t& address)
 	if (InRange(address, 0x0000, 0x3FFF))
 	{
 		//std::cout << "reading from rom bank 0" << std::endl;
-		return Rom[address];
+		return m_Rom[address];
 	}
 
 	auto idx = address + ((ActiveRomRamBank.GetRomBank() - 1) * 0x4000);
-	if (InRange(address, 0x4000, 0x7FFF) && Rom.size() > idx)
-		return Rom[idx];
+	if (InRange(address, 0x4000, 0x7FFF) && m_Rom.size() > idx)
+		return m_Rom[idx];
 
 	if (InRange(address, 0xA000, 0xBFFF))
 	{
@@ -674,15 +662,15 @@ uint8_t GameBoy::MBC5Read(const uint16_t& address)
 		const uint16_t address_into_bank = address - 0xA000;
 		const uint16_t bank_offset = 0x8000 * ActiveRomRamBank.GetRamBank();
 		const uint16_t address_in_ram = bank_offset + address_into_bank;
-		return RamBanks[address_in_ram];
+		return m_RamBanks[address_in_ram];
 	}
 
-	return Memory[address];
+	return m_Memory[address];
 }
 
 void GameBoy::MBCWrite(const uint16_t& address, const uint8_t byte)
 {
-	switch (Mbc)
+	switch (m_Mbc)
 	{
 	case none:
 		MBCNoneWrite(address, byte);
@@ -710,7 +698,7 @@ void GameBoy::MBCWrite(const uint16_t& address, const uint8_t byte)
 
 uint8_t GameBoy::MBCRead(const uint16_t& address)
 {
-	switch (Mbc)
+	switch (m_Mbc)
 	{
 	case none:
 		return MBCNoneRead(address);

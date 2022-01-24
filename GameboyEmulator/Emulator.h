@@ -50,11 +50,11 @@ namespace gbee
 		void SetColor2(float* color);
 		void SetColor3(float* color);
 	private:
-		GameBoy* Instances;
-		const uint8_t InstanceCount;
+		GameBoy* m_Instances;
+		const uint8_t m_InstanceCount;
 
 		void Update(float fps) const;
 
-		std::thread thread{};
+		std::thread m_Thread{};
 	};
 }

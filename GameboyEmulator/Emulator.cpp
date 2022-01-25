@@ -93,28 +93,10 @@ void gbee::Emulator::Join()
 	m_Thread.join();
 }
 
-void gbee::Emulator::SetColor0(float* color)
+void gbee::Emulator::SetColor(int color, float* value)
 {
-	if (color && m_Instances)
-		m_Instances[0].SetColor0(color);
-}
-
-void gbee::Emulator::SetColor1(float* color)
-{
-	if (color && m_Instances)
-		m_Instances[0].SetColor1(color);
-}
-
-void gbee::Emulator::SetColor2(float* color)
-{
-	if (color && m_Instances)
-		m_Instances[0].SetColor2(color);
-}
-
-void gbee::Emulator::SetColor3(float* color)
-{
-	if (color && m_Instances)
-		m_Instances[0].SetColor3(color);
+	if (value && m_Instances)
+		m_Instances[0].SetColor(color, value);
 }
 
 void gbee::Emulator::RunForCycles(const unsigned short cycles, const uint8_t instanceID) const

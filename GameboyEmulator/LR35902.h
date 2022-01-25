@@ -85,7 +85,6 @@ public:
 	 * \note A Rudementary interupt handler
 	 */
 	void HandleInterupts();
-	bool HandleInterrupt(u8 interrupt_bit, u16 interrupt_vector, u8 fired_interrupts);
 	void HandleGraphics(const unsigned cycles, const unsigned cycleBudget = 0, const bool draw = true) noexcept;
 
 	bool GetHalted() { return m_Halted; }
@@ -780,7 +779,6 @@ public:
 	FrameBuffer& GetBuffer() { return m_Buffer; }
 
 	Palette m_GbPalette{};
-	static void SetColor(Color& col, float* newCol);
 
 private:
 	void ResetFrameBuffer();

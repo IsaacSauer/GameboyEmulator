@@ -23,10 +23,10 @@ enum class GBColor : uint8_t
 };
 enum class Color : uint16_t
 {
-	White = 0xEFDF,
-	LightGray = 0x8C7F,
-	DarkGray = 0x365F,
-	Black = 0x012F,
+	White = 0xFFFF,
+	LightGray = 0x8888,
+	DarkGray = 0x4444,
+	Black = 0x0000,
 };
 struct Palette
 {
@@ -34,6 +34,17 @@ struct Palette
 	Color color1 = Color::LightGray;
 	Color color2 = Color::DarkGray;
 	Color color3 = Color::Black;
+};
+
+struct ReColor
+{
+	static uint16_t recolor0;
+	static uint16_t recolor1;
+	static uint16_t recolor2;
+	static uint16_t recolor3;
+
+	static Color GetRecolored(Color realColor);
+	static Color GetReal(Color realColor);
 };
 
 const unsigned int TILES_PER_LINE = 32;

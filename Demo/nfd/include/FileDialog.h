@@ -1,6 +1,10 @@
 #pragma once
 #include <string>
 
-bool OpenFileDialog(std::string& out);
+//"png,jpg;pdf"
+bool OpenFileDialog(std::string& out, const std::string& filter = "");
 
-bool SaveFileDialog(std::string& out);
+//"png,jpg;pdf"
+bool SaveFileDialog(std::string& out, const std::string& filter = "");
+
+bool HasEnding(const std::string& fullString, const std::string& ending);

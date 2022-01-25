@@ -1929,17 +1929,6 @@ void LR35902::register_vblank_callback(const vblank_callback_t& _vblank_callback
 	m_VBlankCallback = _vblank_callback;
 }
 
-void LR35902::SetColor(Color& col, float* newCol)
-{
-	//uint16_t col16{};
-	//col16 |= 8 << uint16_t(newCol[0] * 16);
-	//col16 |= 4 << uint16_t(newCol[1] * 16);
-	//col16 |= 2 << uint16_t(newCol[2] * 16);
-	//col16 |= uint16_t(0xF);
-
-	//col = (Color)col16;
-}
-
 void LR35902::ResetFrameBuffer()
 {
 	m_Gameboy.GetFramebuffer().reset();

@@ -241,21 +241,17 @@ void Update(gbee::Emulator& emu)
 			{
 				std::string path{};
 
-				if (OpenFileDialog(path))
+				if (OpenFileDialog(path, "gb,gbc"))
 				{
-					//emu.Stop();
-
-					//emu.LoadGame(path);
-					//emu.Start();
 					emu.Stop();
 					emu.Join();
 					emu.Reset();
 					emu.AssignDrawCallback(VBlankCallback);
 					emu.LoadGame(path);
 					emu.Start();
-				}
 
-				gCurrentFile = path.substr(path.find_last_of("/\\") + 1);
+					gCurrentFile = path.substr(path.find_last_of("/\\") + 1);
+				}
 			}
 			ImGui::SameLine();
 			ImGui::TextWrapped(gCurrentFile.c_str());
@@ -276,8 +272,11 @@ void Update(gbee::Emulator& emu)
 				emu.SetPauseState(true, 0);
 				std::string path{};
 
-				if (SaveFileDialog(path))
+				if (SaveFileDialog(path, "png"))
 				{
+					if (!HasEnding(path, ".png"))
+						path += ".png";
+
 					save_texture(gRendr, gTextures[0], path.c_str());
 				}
 
@@ -286,25 +285,54 @@ void Update(gbee::Emulator& emu)
 
 			//COLOR
 			ImGui::Spacing();
-			if (ImGui::TreeNode("Colors:"))
+			ImGuiColorEditFlags misc_flags = flags;
+			flags |= ImGuiColorEditFlags_NoAlpha;        // This is by default if you call ColorPicker3() instead of ColorPicker4()
+			flags |= ImGuiColorEditFlags_AlphaBar;
+			flags |= ImGuiColorEditFlags_PickerHueBar;
+			flags |= ImGuiColorEditFlags_PickerHueWheel;
+			flags |= ImGuiColorEditFlags_NoInputs;       // Disable all RGB/HSV/Hex displays
+			flags |= ImGuiColorEditFlags_DisplayRGB;     // Override display mode
+			flags |= ImGuiColorEditFlags_DisplayHSV;
+			flags |= ImGuiColorEditFlags_DisplayHex;
+
+			if (ImGui::TreeNode("Color 0:"))
 			{
-				{
-					static ImVec4 color = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
-					ImGuiColorEditFlags misc_flags = flags;
-					flags |= ImGuiColorEditFlags_NoAlpha;        // This is by default if you call ColorPicker3() instead of ColorPicker4()
-					flags |= ImGuiColorEditFlags_AlphaBar;
-					flags |= ImGuiColorEditFlags_PickerHueBar;
-					flags |= ImGuiColorEditFlags_PickerHueWheel;
-					flags |= ImGuiColorEditFlags_NoInputs;       // Disable all RGB/HSV/Hex displays
-					flags |= ImGuiColorEditFlags_DisplayRGB;     // Override display mode
-					flags |= ImGuiColorEditFlags_DisplayHSV;
-					flags |= ImGuiColorEditFlags_DisplayHex;
-					if (ImGui::ColorPicker4("Color", (float*)&color, misc_flags, nullptr))
-					{
-						emu.SetColor0((float*)&color);
-					}
-					ImGui::TreePop();
-				}
+				static ImVec4 color = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+
+				if (ImGui::ColorPicker4("Color", (float*)&color, misc_flags, nullptr))
+					emu.SetColor(0, (float*)&color);
+
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("Color 1:"))
+			{
+				static ImVec4 color = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+
+				if (ImGui::ColorPicker4("Color", (float*)&color, misc_flags, nullptr))
+					emu.SetColor(1, (float*)&color);
+
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("Color 2:"))
+			{
+				static ImVec4 color = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+
+				if (ImGui::ColorPicker4("Color", (float*)&color, misc_flags, nullptr))
+					emu.SetColor(2, (float*)&color);
+
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("Color 3:"))
+			{
+				static ImVec4 color = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+
+				if (ImGui::ColorPicker4("Color", (float*)&color, misc_flags, nullptr))
+					emu.SetColor(3, (float*)&color);
+
+				ImGui::TreePop();
 			}
 
 			ImGui::End();
@@ -356,7 +384,7 @@ int main(int argc, char* argv[])
 		testEmu.TestCPU();
 	}
 	//Choose rom
-	else if (OpenFileDialog(path))
+	else if (OpenFileDialog(path, "gb,gbc"))
 	{
 		try
 		{

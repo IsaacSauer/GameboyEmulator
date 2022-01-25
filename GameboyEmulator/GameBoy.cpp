@@ -3,15 +3,17 @@
 #include <fstream>
 #include <iostream>
 #include <time.h>
+#include <algorithm>
+
 #include "opc_test/disassembler.h"
 #include "CartridgeInfo.h"
 #include "FrameBuffer.h"
 #include "Measure.h"
+#include "bitwise.h"
 
 GameBoy::GameBoy(const std::string& gameFile)
 	: GameBoy{}
 {
-	//LoadGame(gameFile);
 }
 
 //values of banks needed / size etc retrieved from https://gbdev.gg8.se/wiki/articles/The_Cartridge_Header#0149_-_RAM_Size
@@ -362,24 +364,38 @@ void GameBoy::SetKey(const Key key, const bool pressed)
 		m_JoyPadState |= (1 << key);
 }
 
-void GameBoy::SetColor0(float* color)
+void GameBoy::SetColor(int color, float* value)
 {
-	m_Cpu.SetColor(m_Cpu.m_GbPalette.color0, color);
-}
+	int i0 = std::clamp((int)std::roundf(value[0] * 15), 0, 15);
+	int i1 = std::clamp((int)std::roundf(value[1] * 15), 0, 15);
+	int i2 = std::clamp((int)std::roundf(value[2] * 15), 0, 15);
 
-void GameBoy::SetColor1(float* color)
-{
-	m_Cpu.SetColor(m_Cpu.m_GbPalette.color1, color);
-}
+	uint16_t newCol{};
+	newCol |= i0;
+	newCol <<= 4;
+	newCol |= i1;
+	newCol <<= 4;
+	newCol |= i2;
+	newCol <<= 4;
+	newCol |= 0xF;
 
-void GameBoy::SetColor2(float* color)
-{
-	m_Cpu.SetColor(m_Cpu.m_GbPalette.color2, color);
-}
-
-void GameBoy::SetColor3(float* color)
-{
-	m_Cpu.SetColor(m_Cpu.m_GbPalette.color3, color);
+	switch (color)
+	{
+	case 0:
+		ReColor::recolor0 = newCol;
+		break;
+	case 1:
+		ReColor::recolor1 = newCol;
+		break;
+	case 2:
+		ReColor::recolor2 = newCol;
+		break;
+	case 3:
+		ReColor::recolor3 = newCol;
+		break;
+	default:
+		break;
+	}
 }
 
 void GameBoy::HandleTimers(const unsigned stepCycles, const unsigned cycleBudget)
@@ -398,11 +414,11 @@ void GameBoy::HandleTimers(const unsigned stepCycles, const unsigned cycleBudget
 		++m_DIVTimer;
 	}
 
-	//if (TACTimer & 0x4)
+	//if (m_TACTimer & 0x4)
 	//{
-	//	TIMACycles += stepCycles;
+	//	m_TIMACycles += stepCycles;
 	//	unsigned int threshold{};
-	//	switch (TACTimer & 0x3)
+	//	switch (m_TACTimer & 0x3)
 	//	{
 	//	case 0:
 	//		threshold = cycleBudget / 4096;
@@ -419,14 +435,14 @@ void GameBoy::HandleTimers(const unsigned stepCycles, const unsigned cycleBudget
 	//	default:
 	//		assert(true);
 	//	}
-	//	while (threshold != 0 && TIMACycles >= threshold)
+	//	while (threshold != 0 && m_TIMACycles >= threshold)
 	//	{
-	//		if (!++TIMATimer)
+	//		if (!++m_TIMATimer)
 	//		{
-	//			TIMATimer = TMATimer;
+	//			m_TIMATimer = m_TMATimer;
 	//			GetIF() |= 0x4;
 	//		}
-	//		TIMACycles -= threshold; //threshold == 0??
+	//		m_TIMACycles -= threshold; //threshold == 0??
 	//	}
 	//}
 }

@@ -552,16 +552,13 @@ void GameBoy::MBC3Write(const uint16_t& address, const uint8_t byte)
 	if (InRange(address, 0xA000, 0xBFFF))
 	{
 		//std::cout << "writing to RAM" << std::endl;
+		
+		if (!m_RamBankEnabled || m_RamBanks.empty()) { return; }
 
-		if (!m_RamBankEnabled) { return; }
-
-		if (m_RamOverRtc)
-		{
-			auto offset_into_ram = 0x2000 * ActiveRomRamBank.ramBank;
-			//auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
-			auto address_in_ram = (address - 0xA000) + offset_into_ram;
-			m_RamBanks[address_in_ram] = byte;
-		}
+		auto offset_into_ram = 0x8000 * ActiveRomRamBank.ramBank;
+		//auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
+		auto address_in_ram = (address - 0xA000) + offset_into_ram;
+		m_RamBanks[address_in_ram] = byte;
 	}
 }
 
@@ -597,7 +594,7 @@ void GameBoy::MBC5Write(const uint16_t& address, const uint8_t byte)
 	{
 		if (!m_RamBankEnabled || m_RamBanks.empty()) { return; }
 
-		auto offset_into_ram = 0x2000 * ActiveRomRamBank.ramBank;
+		auto offset_into_ram = 0x8000 * ActiveRomRamBank.ramBank;
 		//auto offset_into_ram = 0x2000 * ActiveRomRamBank.GetRamBank();
 		auto address_in_ram = (address - 0xA000) + offset_into_ram;
 		m_RamBanks[address_in_ram] = byte;

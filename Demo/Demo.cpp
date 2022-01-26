@@ -422,17 +422,17 @@ int main(int argc, char* argv[])
 			emum.Stop();
 			emum.Join();
 
-			//Log Timings
-			std::ofstream out;
-			std::string file{ "timingsMultiplier" };
-			file += std::to_string(gSpeedModifiers);
-			file += ".txt";
-			out.open(file);
-			for (auto time : gMsPerFrame)
-			{
-				out << time << '\n';
-			}
-			out.close();
+			////Log Timings
+			//std::ofstream out;
+			//std::string file{ "timingsMultiplier" };
+			//file += std::to_string(gSpeedModifiers);
+			//file += ".txt";
+			//out.open(file);
+			//for (auto time : gMsPerFrame)
+			//{
+			//	out << time << '\n';
+			//}
+			//out.close();
 
 			SDL_DestroyRenderer(gRendr);
 			SDL_DestroyWindow(gWind);

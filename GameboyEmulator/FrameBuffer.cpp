@@ -39,14 +39,12 @@ void FrameBuffer::set_pixel(unsigned int x, unsigned int y, Color color)
 {
 	//Recolor
 	buffer[pixel_index(x, y)] = ReColor::GetRecolored(color);
-	//buffer[pixel_index(x, y)] = color;
 }
 
 auto FrameBuffer::get_pixel(unsigned int x, unsigned int y) const -> Color
 {
 	//Recolor
 	return ReColor::GetReal(buffer[pixel_index(x, y)]);
-	//return buffer[pixel_index(x, y)];
 }
 
 inline auto FrameBuffer::pixel_index(unsigned int x, unsigned int y) const -> unsigned int { return (y * width) + x; }

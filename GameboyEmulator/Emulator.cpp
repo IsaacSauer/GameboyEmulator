@@ -24,7 +24,6 @@ void gbee::Emulator::Start()
 {
 	m_Instances[0].SetRunningVariable(true);
 	m_Thread = std::thread{ &GameBoy::Update, std::ref(m_Instances[0]) };
-	//thread.detach(); //We don't need to sync them, ever..
 }
 
 void gbee::Emulator::Stop()

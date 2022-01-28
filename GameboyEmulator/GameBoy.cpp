@@ -6,7 +6,6 @@
 #include <algorithm>
 
 #include "opc_test/disassembler.h"
-#include "CartridgeInfo.h"
 #include "FrameBuffer.h"
 #include "Measure.h"
 #include "bitwise.h"
@@ -37,7 +36,6 @@ void GameBoy::LoadGame(const std::string& gbFile)
 	////Disassmble required opcodes to txt file
 	//Disassemble();
 
-	auto cartridge = get_info(m_Rom);
 	const GameHeader header{ ReadHeader() };
 	m_Mbc = header.mbc;
 
@@ -213,7 +211,7 @@ GameHeader GameBoy::ReadHeader()
 		assert(m_Rom[0x147] == 0x0); //if not 0x0 it's undocumented
 	}
 
-	header.ramSizeValue = m_Rom[header::ram_size];
+	header.ramSizeValue = m_Rom[0x149];
 
 	return header;
 }
@@ -366,16 +364,12 @@ void GameBoy::SetKey(const Key key, const bool pressed)
 
 void GameBoy::SetColor(int color, float* value)
 {
-	int i0 = std::clamp((int)std::roundf(value[0] * 15), 0, 15);
-	int i1 = std::clamp((int)std::roundf(value[1] * 15), 0, 15);
-	int i2 = std::clamp((int)std::roundf(value[2] * 15), 0, 15);
-
 	uint16_t newCol{};
-	newCol |= i0;
+	newCol |= std::clamp((int)std::roundf(value[0] * 15), 0, 15);;
 	newCol <<= 4;
-	newCol |= i1;
+	newCol |= std::clamp((int)std::roundf(value[1] * 15), 0, 15);;
 	newCol <<= 4;
-	newCol |= i2;
+	newCol |= std::clamp((int)std::roundf(value[2] * 15), 0, 15);;
 	newCol <<= 4;
 	newCol |= 0xF;
 

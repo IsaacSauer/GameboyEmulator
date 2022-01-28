@@ -264,8 +264,6 @@ void Update(gbee::Emulator& emu)
 			ImGui::SameLine();
 			ImGui::SliderInt("Speed", &speedModifiers, 1, 100);
 
-			ImGui::Spacing();
-
 			//Screenshot
 			if (ImGui::Button("Save Screenshot...", ImVec2{ 150, 20 }))
 			{
@@ -284,7 +282,6 @@ void Update(gbee::Emulator& emu)
 			}
 
 			//COLOR
-			ImGui::Spacing();
 			ImGuiColorEditFlags misc_flags = flags;
 			flags |= ImGuiColorEditFlags_NoAlpha;        // This is by default if you call ColorPicker3() instead of ColorPicker4()
 			flags |= ImGuiColorEditFlags_AlphaBar;
@@ -334,6 +331,16 @@ void Update(gbee::Emulator& emu)
 
 				ImGui::TreePop();
 			}
+
+			std::string controls{};
+			controls += "\n\n\n\n";
+			controls += "Left, Right, Up, Down = Arrow Keys\n";
+			controls += "B = A\n";
+			controls += "A = D\n";
+			controls += "Select = Space\n";
+			controls += "Start = Enter\n";
+
+			ImGui::TextWrapped(controls.c_str());
 
 			ImGui::End();
 			emu.SetSpeed(speedModifiers, 0);

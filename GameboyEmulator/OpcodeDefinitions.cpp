@@ -394,6 +394,7 @@ The following conditions should be met before a STOP instruction is executed and
 */
 FINLINE void LR35902::STOP()
 {
+	m_Halted = true;
 	//Until button press
 	//Gameboy.SetPaused(true);
 	//--Register.pc;

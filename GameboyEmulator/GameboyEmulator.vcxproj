@@ -176,7 +176,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="bitwise.h" />
-    <ClInclude Include="CartridgeInfo.h" />
     <ClInclude Include="EmulatorClean.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClInclude>
@@ -195,7 +194,6 @@
     <ClInclude Include="FrameBuffer.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CartridgeInfo.cpp" />
     <ClCompile Include="LR35902.cpp" />
     <ClCompile Include="Emulator.cpp" />
     <ClCompile Include="GameBoy.cpp" />

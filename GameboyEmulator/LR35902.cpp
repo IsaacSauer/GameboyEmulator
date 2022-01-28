@@ -1857,7 +1857,8 @@ void LR35902::mycpu_init(size_t tester_instruction_mem_size, uint8_t* tester_ins
 
 void LR35902::mycpu_set_state(state* state)
 {
-	m_Gameboy.SetPaused(state->halted);
+	m_Halted = state->halted;
+	//m_Gameboy.SetPaused(state->halted);
 	m_InteruptsEnabled = state->interrupts_master_enabled;
 
 	m_Register.pc = state->PC;
@@ -1888,7 +1889,7 @@ void LR35902::mycpu_get_state(state* state)
 	state->reg8.H = m_Register.reg8.H;
 	state->reg8.L = m_Register.reg8.L;
 
-	state->halted = m_Gameboy.GetPaused();
+	state->halted = m_Halted;
 	state->interrupts_master_enabled = m_InteruptsEnabled;
 
 	state->num_mem_accesses = num_mem_accesses;
